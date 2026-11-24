@@ -1264,16 +1264,53 @@
     // =========================================================================
     async function loadActualDashboardStats() {
       const res = await callBackend('getDashboardStats');
-      if (res && res.status === 'success') {
-        const s = res.stats;
-        document.getElementById('statPasienHariIni').innerText = s.kunjHariIni;
-        document.getElementById('statPasienBaru').innerText = `Pasien baru hari ini: ${s.pasienBaruHariIni}`;
-        document.getElementById('statMenunggu').innerText = s.menunggu;
-        document.getElementById('statSelesai').innerText = `Selesai periksa: ${s.selesai}`;
-        document.getElementById('statPendapatan').innerText = 'Rp ' + Number(s.pendapatanHariIni).toLocaleString('id-ID');
-        document.getElementById('statSsSukses').innerText = s.ssBerhasil;
-        document.getElementById('statSsGagal').innerText = s.ssGagal;
-      }
+      if (!res || res.status !== 'success') return;
+
+      const s = res.stats;
+      document.getElementById('statPasienHariIni').innerText = s.kunjHariIni;
+      document.getElementById('statPasienBaru').innerText = `Pasien baru: ${s.pasienBaruHariIni}`;
+      document.getElementById('statMenunggu').innerText = s.menunggu;
+      document.getElementById('statSelesai').innerText = `Selesai periksa: ${s.selesai}`;
+      document.getElementById('statPendapatan').innerText = 'Rp ' + Number(s.pendapatanHariIni).toLocaleString('id-ID');
+      document.getElementById('statSsSukses').innerText = s.ssBerhasil;
+      document.getElementById('statSsGagal').innerText = s.ssGagal;
+
+      renderActualChart(res.chart);
+    }
+
+    function renderActualChart(chartData) {
+      const ctx = document.getElementById('chartKunjungan');
+      if (!ctx || !chartData) return;
+      if (CHART_KUNJUNGAN) CHART_KUNJUNGAN.destroy();
+
+      CHART_KUNJUNGAN = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartData.labels,
+          datasets: [{
+            label: 'Jumlah Kunjungan Pasien',
+            data: chartData.kunjungan,
+            borderColor: '#0284c7',
+            backgroundColor: 'rgba(2, 132, 199, 0.12)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 4,
+            pointBackgroundColor: '#1e3a8a'
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: { stepSize: 1, precision: 0 }
+            }
+          },
+          plugins: {
+            legend: { display: false }
+          }
+        }
+      });
     }
 
     // =========================================================================
