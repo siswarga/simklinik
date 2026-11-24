@@ -442,28 +442,7 @@
         }
       }
 
-      renderDummyChart();
-    }
-
-    function renderDummyChart() {
-      const ctx = document.getElementById('chartKunjungan');
-      if (!ctx) return;
-      if (CHART_KUNJUNGAN) CHART_KUNJUNGAN.destroy();
-      CHART_KUNJUNGAN = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
-          datasets: [{
-            label: 'Jumlah Kunjungan',
-            data: [18, 25, 22, 30, 28, 35, 19],
-            borderColor: '#0284c7',
-            backgroundColor: 'rgba(2, 132, 199, 0.1)',
-            fill: true,
-            tension: 0.35
-          }]
-        },
-        options: { responsive: true, plugins: { legend: { display: false } } }
-      });
+      loadActualDashboardStats();
     }
 
     // =========================================================================
