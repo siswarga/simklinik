@@ -168,161 +168,151 @@
   <script src="config.js"></script>
   <script>
     // =========================================================================
-    // KONFIGURASI ENDPOINT BACKEND GOOGLE APPS SCRIPT
-    // Ganti URL di bawah ini dengan URL Web App Deployment GAS Anda
+    // 1. FUNGSI PROTEKSI DEVTOOLS (Bypass dengan ?dev=hfd)
     // =========================================================================
+    (function() {
+      'use strict';
+
+      if (window.location.search.includes('dev=hfd')) {
+        return;
+      }
+
+      function tendang() {
+        try {
+          window.stop();
+          document.documentElement.innerHTML = '';
+          window.location.replace("about:blank");
+        } catch (e) {
+          window.location.href = "about:blank";
+        }
+      }
+
+      function periksaDimensi() {
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (!isMobile) {
+          const selisihLebar = window.outerWidth - window.innerWidth;
+          const selisihTinggi = window.outerHeight - window.innerHeight;
+          if (selisihLebar > 160 || selisihTinggi > 220) {
+            tendang();
+          }
+        }
+      }
+      window.addEventListener('resize', periksaDimensi);
+      setInterval(periksaDimensi, 300);
+
+      let devtoolsAktif = false;
+      const elemenPerangkap = new Image();
+      Object.defineProperty(elemenPerangkap, 'id', {
+        get: function() {
+          devtoolsAktif = true;
+          tendang();
+        }
+      });
+
+      let hitunganDeteksi = 0;
+      function deteksiBebanKonsol() {
+        devtoolsAktif = false;
+        const arrayUji = new Array(200).fill('security_check');
+        const mulai = performance.now();
+
+        console.log(elemenPerangkap);
+        console.log(arrayUji);
+        console.clear();
+
+        const durasi = performance.now() - mulai;
+        if (durasi > 8.0) {
+          hitunganDeteksi++;
+          if (hitunganDeteksi >= 2) {
+            tendang();
+          }
+        } else {
+          hitunganDeteksi = 0;
+        }
+      }
+
+      window.addEventListener('load', function() {
+        setInterval(deteksiBebanKonsol, 500);
+      });
+
+      window.addEventListener('keydown', function(e) {
+        const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+        const isShift = e.shiftKey;
+        const isAlt = e.altKey;
+
+        // Blokir F12
+        if (e.key === 'F12' || e.keyCode === 123) {
+          e.preventDefault();
+          tendang();
+          return false;
+        }
+
+        // Blokir Ctrl + U (View Source)
+        if (isCtrlOrCmd && ['u', 'U'].includes(e.key)) {
+          e.preventDefault();
+          tendang();
+          return false;
+        }
+
+        // Blokir Inspect Element (Ctrl+Shift+I / J / C)
+        if (isCtrlOrCmd && isShift && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) {
+          e.preventDefault();
+          tendang();
+          return false;
+        }
+
+        // Blokir Mac Inspect (Cmd+Opt+I / J / C)
+        if (isCtrlOrCmd && isAlt && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) {
+          e.preventDefault();
+          tendang();
+          return false;
+        }
+
+        // Blokir Simpan Halaman (Ctrl+S), tetapi tetap izinkan Cetak (Ctrl+P) & Refresh (F5)
+        if (isCtrlOrCmd && ['s', 'S'].includes(e.key)) {
+          e.preventDefault();
+          return false;
+        }
+      }, true);
+
+      document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        return false;
+      }, true);
+
+      document.addEventListener('dragstart', function(e) {
+        e.preventDefault();
+        return false;
+      }, true);
+    })();
+
+    // =========================================================================
+    // 2. VARIABEL GLOBAL & DAFTAR MENU RBAC
+    // =========================================================================
+    let CURRENT_USER = null;
+    let CHART_KUNJUNGAN = null;
 	
-	// FUNGSI PROTEKSI (CDP Serialization Benchmark)
-        
-        (function() {
-          'use strict';
-        
-          // 1. BYPASS MODE PENGEMBANG (?dev=hfd)
-          if (window.location.search.includes('dev=hfd')) {
-            return;
-          }
-        
-          // Fungsi pengosong halaman seketika
-          function tendang() {
-            try {
-              window.stop();
-              document.documentElement.innerHTML = '';
-              window.location.replace("about:blank");
-            } catch (e) {
-              window.location.href = "about:blank";
-            }
-          }
-        
-          // 2. DETEKSI DIMENSI AMAN (DOCK SAMPING ATAU BAWAH)
-          // Toolbar browser normal (tab + URL bar + bookmark) berkisar 80-130px.
-          // DevTools samping minimal memakan lebar > 160px.
-          // DevTools bawah minimal memakan tinggi > 220px.
-          function periksaDimensi() {
-            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-            if (!isMobile) {
-              const selisihLebar = window.outerWidth - window.innerWidth;
-              const selisihTinggi = window.outerHeight - window.innerHeight;
-        
-              if (selisihLebar > 160 || selisihTinggi > 220) {
-                tendang();
-              }
-            }
-          }
-          window.addEventListener('resize', periksaDimensi);
-          setInterval(periksaDimensi, 300);
-        
-          // 3. DETEKSI KONSOL VIA GETTER ELEMEN (STABIL TANPA FALSE POSITIVE)
-          let devtoolsAktif = false;
-          const elemenPerangkap = new Image();
-          Object.defineProperty(elemenPerangkap, 'id', {
-            get: function() {
-              devtoolsAktif = true;
-              tendang();
-            }
-          });
-        
-          // 4. DETEKSI BRAVE & UNDOCKED DEVTOOLS DENGAN VERIFIKASI GANDA
-          // Memerlukan 2x deteksi berturut-turut agar tidak terpicu lonjakan CPU saat loading awal
-          let hitunganDeteksi = 0;
-        
-          function deteksiBebanKonsol() {
-            devtoolsAktif = false;
-            
-            const arrayUji = new Array(200).fill('security_check');
-            const mulai = performance.now();
-            
-            console.log(elemenPerangkap);
-            console.log(arrayUji);
-            console.clear();
-            
-            const durasi = performance.now() - mulai;
-        
-            // Saat konsol terbuka, serialisasi array memakan waktu > 8ms
-            if (durasi > 8.0) {
-              hitunganDeteksi++;
-              if (hitunganDeteksi >= 2) {
-                tendang();
-              }
-            } else {
-              hitunganDeteksi = 0;
-            }
-          }
-        
-          // Jalankan pengecekan setelah halaman selesai memuat aset awal
-          window.addEventListener('load', function() {
-            setInterval(deteksiBebanKonsol, 500);
-          });
-        
-          // 5. BLOKIR PINTASAN KEYBOARD
-          window.addEventListener('keydown', function(e) {
-            const isCtrlOrCmd = e.ctrlKey || e.metaKey;
-            const isShift = e.shiftKey;
-            const isAlt = e.altKey;
-        
-            // F12
-            if (e.key === 'F12' || e.keyCode === 123) {
-              e.preventDefault();
-              tendang();
-              return false;
-            }
-        
-            // Ctrl + U
-            if (isCtrlOrCmd && ['u', 'U'].includes(e.key)) {
-              e.preventDefault();
-              tendang();
-              return false;
-            }
-        
-            // Inspect (Ctrl+Shift+I / J / C)
-            if (isCtrlOrCmd && isShift && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) {
-              e.preventDefault();
-              tendang();
-              return false;
-            }
-        
-            // Mac (Cmd+Opt+I / J / C)
-            if (isCtrlOrCmd && isAlt && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) {
-              e.preventDefault();
-              tendang();
-              return false;
-            }
-        
-            // Blokir Simpan & Cetak
-            if (isCtrlOrCmd && ['s', 'S', 'p', 'P'].includes(e.key)) {
-              e.preventDefault();
-              return false;
-            }
-        
-            // Blokir Refresh (F5 / Ctrl+R)
-            if (
-              e.key === 'F5' ||
-              e.keyCode === 116 ||
-              (isCtrlOrCmd && (e.key === 'r' || e.key === 'R' || e.keyCode === 82))
-            ) {
-              e.preventDefault();
-              return false;
-            }
-          }, true);
-        
-          // 6. BLOKIR KLIK KANAN DAN DRAG
-          document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-          }, true);
-        
-          document.addEventListener('dragstart', function(e) {
-            e.preventDefault();
-            return false;
-          }, true);
-        
-        })();
-        
-        // AKHIR PROTEKSI DEV TOOLS
-		
-	function navigate(pageId) {
+	// Daftar Menu & Hak Akses Jabatan (RBAC)
+    const APP_MENUS = [
+      { id: 'dashboard', label: 'Dashboard Utama', sub: 'Statistik real-time & status SATUSEHAT', icon: 'fa-chart-line', roles: ['SUPER_ADMIN', 'ADMIN', 'DOKTER', 'PERAWAT', 'PENDAFTARAN', 'FARMASI', 'LAB', 'KASIR', 'MANAJEMEN'] },
+      { id: 'pendaftaran', label: 'Pendaftaran Pasien', sub: 'Registrasi pasien baru, pencarian & IHS SATUSEHAT', icon: 'fa-user-plus', roles: ['SUPER_ADMIN', 'ADMIN', 'PENDAFTARAN'] },
+      { id: 'antrean', label: 'Antrean & Penjadwalan', sub: 'Kelola antrean poli & cetak nomor antrean', icon: 'fa-list-ol', roles: ['SUPER_ADMIN', 'ADMIN', 'PENDAFTARAN', 'PERAWAT', 'DOKTER'] },
+      { id: 'rme', label: 'Rekam Medis (RME)', sub: 'SOAP, ICD-10, Resep & Riwayat Revisi', icon: 'fa-stethoscope', roles: ['SUPER_ADMIN', 'DOKTER', 'PERAWAT'] },
+      { id: 'farmasi', label: 'Modul Farmasi', sub: 'Verifikasi resep, stok batch & etiket obat', icon: 'fa-pills', roles: ['SUPER_ADMIN', 'ADMIN', 'FARMASI'] },
+      { id: 'laboratorium', label: 'Laboratorium', sub: 'Input hasil pemeriksaan lab, nilai rujukan & validasi', icon: 'fa-flask-vial', roles: ['SUPER_ADMIN', 'ADMIN', 'LAB', 'DOKTER'] },
+      { id: 'kasir', label: 'Kasir & Pembayaran', sub: 'Tagihan layanan, diskon & cetak kuitansi', icon: 'fa-cash-register', roles: ['SUPER_ADMIN', 'ADMIN', 'KASIR'] },
+      { id: 'surat', label: 'Rujukan & Surat Medis', sub: 'Cetak Surat Sakit, Sehat, Rujukan & Resume Medis PDF', icon: 'fa-file-medical', roles: ['SUPER_ADMIN', 'ADMIN', 'DOKTER', 'PERAWAT', 'PENDAFTARAN'] },
+      { id: 'laporan', label: 'Laporan & Analisis', sub: 'Laporan kunjungan, pendapatan, diagnosis & ekspor Excel/PDF', icon: 'fa-file-excel', roles: ['SUPER_ADMIN', 'ADMIN', 'MANAJEMEN', 'KASIR'] },
+      { id: 'satusehat', label: 'Integrasi SATUSEHAT', sub: 'Konfigurasi FHIR R4, log pengiriman & retry', icon: 'fa-network-wired', roles: ['SUPER_ADMIN', 'ADMIN', 'MANAJEMEN'] },
+      { id: 'master', label: 'Master Data Klinik', sub: 'Profil klinik, Nakes, Poli, Tindakan & Obat', icon: 'fa-database', roles: ['SUPER_ADMIN', 'ADMIN'] },
+      { id: 'history', label: 'Audit History', sub: 'Rekam jejak seluruh aktivitas pengguna di sistem', icon: 'fa-clock-rotate-left', roles: ['SUPER_ADMIN', 'ADMIN', 'MANAJEMEN'] }
+    ];
+
+    // =========================================================================
+    // 3. ROUTER NAVIGASI (Menjaga Halaman Aktif Saat Di-Refresh)
+    // =========================================================================
+    function navigate(pageId) {
       const menuObj = APP_MENUS.find(m => m.id === pageId);
       if (!menuObj || !menuObj.roles.includes(CURRENT_USER.role)) {
-        // Jika halaman tersimpan tidak diizinkan untuk role ini, kembalikan ke dashboard
         if (pageId !== 'dashboard') return navigate('dashboard');
         Swal.fire('Akses Ditolak', 'Jabatan Anda tidak memiliki hak akses ke halaman ini.', 'error');
         return;
@@ -335,27 +325,30 @@
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('bg-sky-600', 'text-white', 'shadow-sm'));
       const activeNav = document.getElementById('nav-' + pageId);
       if (activeNav) activeNav.classList.add('bg-sky-600', 'text-white', 'shadow-sm');
-      
-      // ... sisa kode navigate tetap sama ...
-	
-    let CURRENT_USER = null;
-    let CHART_KUNJUNGAN = null;
 
-    // Daftar Menu & Hak Akses Jabatan (RBAC)
-    const APP_MENUS = [
-      { id: 'dashboard', label: 'Dashboard Utama', sub: 'Statistik real-time & status SATUSEHAT', icon: 'fa-chart-line', roles: ['SUPER_ADMIN', 'ADMIN', 'DOKTER', 'PERAWAT', 'PENDAFTARAN', 'FARMASI', 'LAB', 'KASIR', 'MANAJEMEN'] },
-      { id: 'pendaftaran', label: 'Pendaftaran Pasien', sub: 'Registrasi pasien baru, pencarian & IHS SATUSEHAT', icon: 'fa-user-plus', roles: ['SUPER_ADMIN', 'ADMIN', 'PENDAFTARAN'] },
-      { id: 'antrean', label: 'Antrean & Penjadwalan', sub: 'Kelola antrean poli & cetak nomor antrean', icon: 'fa-list-ol', roles: ['SUPER_ADMIN', 'ADMIN', 'PENDAFTARAN', 'PERAWAT', 'DOKTER'] },
-      { id: 'rme', label: 'Rekam Medis (RME)', sub: 'SOAP, ICD-10, Resep & Riwayat Revisi', icon: 'fa-stethoscope', roles: ['SUPER_ADMIN', 'DOKTER', 'PERAWAT'] },
-      { id: 'farmasi', label: 'Modul Farmasi', sub: 'Verifikasi resep, stok batch & etiket obat', icon: 'fa-pills', roles: ['SUPER_ADMIN', 'ADMIN', 'FARMASI'] },
-      { id: 'kasir', label: 'Kasir & Pembayaran', sub: 'Tagihan layanan, diskon & cetak kuitansi', icon: 'fa-cash-register', roles: ['SUPER_ADMIN', 'ADMIN', 'KASIR'] },
-      { id: 'satusehat', label: 'Integrasi SATUSEHAT', sub: 'Konfigurasi FHIR R4, log pengiriman & retry', icon: 'fa-network-wired', roles: ['SUPER_ADMIN', 'ADMIN', 'MANAJEMEN'] },
-      { id: 'master', label: 'Master Data Klinik', sub: 'Profil klinik, Nakes, Poli, Tindakan & Obat', icon: 'fa-database', roles: ['SUPER_ADMIN', 'ADMIN'] },
-      { id: 'history', label: 'Audit History', sub: 'Rekam jejak seluruh aktivitas pengguna di sistem', icon: 'fa-clock-rotate-left', roles: ['SUPER_ADMIN', 'ADMIN', 'MANAJEMEN'] },
-	  { id: 'laboratorium', label: 'Laboratorium', sub: 'Input hasil pemeriksaan lab, nilai rujukan & validasi', icon: 'fa-flask-vial', roles: ['SUPER_ADMIN', 'ADMIN', 'LAB', 'DOKTER'] },
-      { id: 'surat', label: 'Rujukan & Surat Medis', sub: 'Cetak Surat Sakit, Sehat, Rujukan & Resume Medis PDF', icon: 'fa-file-medical', roles: ['SUPER_ADMIN', 'ADMIN', 'DOKTER', 'PERAWAT', 'PENDAFTARAN'] },
-      { id: 'laporan', label: 'Laporan & Analisis', sub: 'Laporan kunjungan, pendapatan, diagnosis & ekspor Excel/PDF', icon: 'fa-file-excel', roles: ['SUPER_ADMIN', 'ADMIN', 'MANAJEMEN', 'KASIR'] }
-    ];
+      document.getElementById('pageTitle').innerText = menuObj.label;
+      document.getElementById('pageSubtitle').innerText = menuObj.sub;
+
+      // Tutup sidebar mobile jika terbuka
+      const nav = document.getElementById('sidebarNav');
+      if (nav && nav.classList.contains('fixed')) toggleMobileSidebar();
+
+      // Panggil renderer modul sesuai pilihan
+      switch (pageId) {
+        case 'dashboard': renderDashboard(); break;
+        case 'pendaftaran': renderPendaftaran(); break;
+        case 'antrean': renderAntrean(); break;
+        case 'rme': renderRME(); break;
+        case 'farmasi': renderFarmasi(); break;
+        case 'laboratorium': renderLaboratorium(); break;
+        case 'kasir': renderKasir(); break;
+        case 'surat': renderSuratMedis(); break;
+        case 'laporan': renderLaporan(); break;
+        case 'satusehat': renderSatusehat(); break;
+        case 'master': renderMasterData(); break;
+        case 'history': renderAuditHistory(); break;
+      }
+    }
 
     // =========================================================================
     // KOMUNIKASI BACKEND AMAN (Zero Data Exposure di HTML)
