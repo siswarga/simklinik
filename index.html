@@ -32,8 +32,8 @@
         <div class="w-16 h-16 bg-blue-900 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
           <i class="fa-solid fa-hospital text-2xl"></i>
         </div>
-        <h1 class="text-2xl font-bold text-blue-950 tracking-tight">SIMKLINIK</h1>
-        <p class="text-xs text-sky-600 font-semibold mt-1">Sistem Informasi Manajemen Klinik Terpadu</p>
+        <h1 id="loginAppTitle" class="text-2xl font-bold text-blue-950 tracking-tight">SIMKLINIK</h1>
+		<p id="loginAppSub" class="text-xs text-sky-600 font-semibold mt-1">Sistem Informasi Manajemen Klinik Terpadu</p>
         <span class="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
           <i class="fa-solid fa-shield-halved"></i> Terintegrasi SATUSEHAT Kemenkes RI
         </span>
@@ -94,7 +94,7 @@
     <div class="md:hidden bg-blue-950 text-white px-4 py-3 flex items-center justify-between shadow">
       <div class="flex items-center gap-2.5">
         <i class="fa-solid fa-hospital text-sky-400 text-xl"></i>
-        <span class="font-bold tracking-wide">SIMKLINIK</span>
+        <span id="mobileAppTitle" class="font-bold tracking-wide">SIMKLINIK</span>
       </div>
       <button onclick="toggleMobileSidebar()" class="text-white p-1.5 rounded-lg hover:bg-blue-900">
         <i class="fa-solid fa-bars text-lg"></i>
@@ -109,7 +109,7 @@
             <i class="fa-solid fa-hospital text-lg"></i>
           </div>
           <div>
-            <div class="font-bold text-base tracking-wide leading-tight">SIMKLINIK</div>
+            <div id="sidebarAppTitle" class="font-bold text-base tracking-wide leading-tight">SIMKLINIK</div>
             <div id="sidebarRoleBadge" class="text-[10px] font-semibold bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded mt-1 inline-block">
               ROLE
             </div>
@@ -1063,7 +1063,47 @@
               <i class="fa-solid fa-qrcode"></i> Tampilkan Barcode Scan HP
             </button>
           </div>
+			<!-- Form Identitas Aplikasi & Profil Klinik -->
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-base font-bold text-blue-950 mb-1">Identitas Aplikasi & Profil Klinik</h3>
+            <p class="text-xs text-slate-500 mb-4">Data ini otomatis ditampilkan pada halaman login, sidebar, kop surat medis, dan kuitansi pembayaran.</p>
 
+            <form id="formProfilKlinik" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+              <div>
+                <label class="block font-semibold text-slate-600 mb-1">Nama Aplikasi *</label>
+                <input type="text" id="kl_nama_app" required placeholder="Contoh: SIMKLINIK" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-bold text-blue-950" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-600 mb-1">Nama Klinik / Faskes *</label>
+                <input type="text" id="kl_nama_klinik" required placeholder="Contoh: Klinik Pratama Sehat" class="w-full px-3.5 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-600 mb-1">Nomor Izin Praktik / Izin Klinik *</label>
+                <input type="text" id="kl_no_izin" required placeholder="Contoh: 503/012/SIP-KLINIK/2026" class="w-full px-3.5 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-600 mb-1">No. WhatsApp / Telepon Klinik *</label>
+                <input type="tel" id="kl_no_wa" required placeholder="Contoh: 0812xxxxxxxx" class="w-full px-3.5 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-600 mb-1">Email Klinik</label>
+                <input type="email" id="kl_email" placeholder="klinik@domain.com" class="w-full px-3.5 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label class="block font-semibold text-slate-600 mb-1">Kode Faskes / Org ID SATUSEHAT</label>
+                <input type="text" id="kl_org_id" placeholder="Opsional" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-mono" />
+              </div>
+              <div class="md:col-span-2 lg:col-span-3">
+                <label class="block font-semibold text-slate-600 mb-1">Alamat Lengkap Klinik *</label>
+                <textarea id="kl_alamat" rows="2" required placeholder="Jl. Raya..." class="w-full px-3.5 py-2 rounded-xl border border-slate-300"></textarea>
+              </div>
+              <div class="md:col-span-2 lg:col-span-3 flex justify-end">
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold shadow-sm">
+                  <i class="fa-solid fa-floppy-disk mr-1.5"></i> Simpan Identitas Klinik
+                </button>
+              </div>
+            </form>
+          </div>
           <!-- Grid Manajemen Pengguna & Tenaga Kesehatan -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Tambah & Daftar Akun Pengguna (RBAC) -->
@@ -1158,7 +1198,42 @@
             <td class="p-2 font-mono text-[11px] text-sky-700">${n.ihs_practitioner || '-'}</td>
           </tr>`).join('') : '<tr><td colspan="4" class="p-3 text-center text-slate-400">Belum ada data nakes.</td></tr>';
       }
+		
+		// Isi form profil klinik dengan data tersimpan
+        if (res.klinik) {
+          document.getElementById('kl_nama_app').value = res.klinik.nama_aplikasi || 'SIMKLINIK';
+          document.getElementById('kl_nama_klinik').value = res.klinik.nama_klinik || '';
+          document.getElementById('kl_no_izin').value = res.klinik.no_izin || '';
+          document.getElementById('kl_no_wa').value = res.klinik.no_wa || '';
+          document.getElementById('kl_email').value = res.klinik.email || '';
+          document.getElementById('kl_org_id').value = res.klinik.org_id_satusehat || '';
+          document.getElementById('kl_alamat').value = res.klinik.alamat || '';
+        }
 
+      // Handler Simpan Identitas Klinik & Aplikasi
+      document.getElementById('formProfilKlinik').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        Swal.fire({ title: 'Menyimpan Profil...', didOpen: () => Swal.showLoading() });
+        const r = await callBackend('simpanProfilKlinik', {
+          data: {
+            nama_aplikasi: document.getElementById('kl_nama_app').value.trim(),
+            nama_klinik: document.getElementById('kl_nama_klinik').value.trim(),
+            no_izin: document.getElementById('kl_no_izin').value.trim(),
+            no_wa: document.getElementById('kl_no_wa').value.trim(),
+            email: document.getElementById('kl_email').value.trim(),
+            org_id: document.getElementById('kl_org_id').value.trim(),
+            alamat: document.getElementById('kl_alamat').value.trim(),
+            kode_faskes: ''
+          }
+        });
+        if (r && r.status === 'success') {
+          Swal.fire('Tersimpan', r.message, 'success');
+          muatIdentitasAplikasi(); // Langsung perbarui tampilan judul aplikasi
+        } else if (r) {
+          Swal.fire('Gagal', r.message, 'error');
+        }
+      });
+		
       // Handler Simpan Akun Baru
       document.getElementById('formUserBaru').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -1200,8 +1275,8 @@
         }
       });
     }
-
-    // =========================================================================
+	
+	// =========================================================================
     // MODAL BARCODE SCAN HP UNTUK WHATSAPP (Hanya Menampilkan QR Code)
     // =========================================================================
     async function tampilkanBarcodeWa() {
@@ -1394,9 +1469,38 @@
       const savedToken = sessionStorage.getItem('simklinik_token');
       if (savedUser && savedToken) {
         CURRENT_USER = JSON.parse(savedUser);
-        initAppShell();
+        muatIdentitasAplikasi();
       }
     });
+	
+	function terapkanIdentitasKeUI(appName, clinicName) {
+      document.title = `${appName} - ${clinicName}`;
+      const elLoginTitle = document.getElementById('loginAppTitle');
+      const elLoginSub = document.getElementById('loginAppSub');
+      const elSidebarTitle = document.getElementById('sidebarAppTitle');
+      const elMobileTitle = document.getElementById('mobileAppTitle');
+
+      if (elLoginTitle) elLoginTitle.innerText = appName;
+      if (elLoginSub) elLoginSub.innerText = clinicName;
+      if (elSidebarTitle) elSidebarTitle.innerText = appName;
+      if (elMobileTitle) elMobileTitle.innerText = appName;
+    }
+
+    async function muatIdentitasAplikasi() {
+      // Terapkan cache terakhir lebih dulu agar instan
+      const cachedApp = localStorage.getItem('simklinik_app_name');
+      const cachedClinic = localStorage.getItem('simklinik_clinic_name');
+      if (cachedApp) terapkanIdentitasKeUI(cachedApp, cachedClinic || '');
+
+      const res = await callBackend('getProfilPublik');
+      if (res && res.status === 'success' && res.profil) {
+        const appName = res.profil.nama_aplikasi || 'SIMKLINIK';
+        const clinicName = res.profil.nama_klinik || 'Sistem Informasi Manajemen Klinik Terpadu';
+        localStorage.setItem('simklinik_app_name', appName);
+        localStorage.setItem('simklinik_clinic_name', clinicName);
+        terapkanIdentitasKeUI(appName, clinicName);
+      }
+    }
 	
 	// =========================================================================
     // UPDATE DASHBOARD (Mengambil Angka Aktual dari Database Sheets)
