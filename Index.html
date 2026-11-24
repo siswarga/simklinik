@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SIMKLINIK - Sistem Informasi Manajemen Klinik Terpadu</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea { position: absolute; left: 0; top: 0; width: 100%; }
+    }
+    .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+    .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+
+  <!-- AREA CETAK TERSEMBUNYI (Untuk Tiket Antrean, Resume Medis, Etiket, Kuitansi) -->
+  <div id="printArea" class="hidden p-6 bg-white text-black"></div>
+
+  <!-- ===================================================================== -->
+  <!-- 1. HALAMAN LOGIN (Tampil Pertama Sebelum Token Sesi Valid)            -->
+  <!-- ===================================================================== -->
+  <div id="loginView" class="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-white to-blue-100 p-4">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-xl border border-sky-100 p-8">
+      <div class="text-center mb-6">
+        <div class="w-16 h-16 bg-blue-900 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
+          <i class="fa-solid fa-hospital text-2xl"></i>
+        </div>
+        <h1 class="text-2xl font-bold text-blue-950 tracking-tight">SIMKLINIK</h1>
+        <p class="text-xs text-sky-600 font-semibold mt-1">Sistem Informasi Manajemen Klinik Terpadu</p>
+        <span class="inline-flex items-center gap-1.5 mt-2 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <i class="fa-solid fa-shield-halved"></i> Terintegrasi SATUSEHAT Kemenkes RI
+        </span>
+      </div>
+
+      <form id="formLogin" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Username / Email</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+              <i class="fa-solid fa-user"></i>
+            </span>
+            <input type="text" id="loginUsername" required autocomplete="username"
+              class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none"
+              placeholder="Masukkan username" />
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1.5">
+            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600">Password</label>
+            <button type="button" onclick="lupaPassword()" class="text-xs text-sky-600 hover:text-sky-800 font-medium">Lupa password?</button>
+          </div>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400">
+              <i class="fa-solid fa-lock"></i>
+            </span>
+            <input type="password" id="loginPassword" required autocomplete="current-password"
+              class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-sky-500 focus:border-sky-500 focus:outline-none"
+              placeholder="••••••••" />
+          </div>
+        </div>
+
+        <button type="submit"
+          class="w-full bg-blue-900 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-xl transition shadow-md flex items-center justify-center gap-2 mt-2">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>Masuk ke Sistem</span>
+        </button>
+      </form>
+
+      <div class="mt-6 pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400">
+        Akses dibatasi berdasarkan jabatan (RBAC). Seluruh aktivitas tercatat otomatis.
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 2. SHELL APLIKASI UTAMA (Sidebar Kiri + Topbar + Konten Dinamis)      -->
+  <!-- ===================================================================== -->
+  <div id="appView" class="hidden min-h-screen flex flex-col md:flex-row">
+    
+    <!-- Mobile Header -->
+    <div class="md:hidden bg-blue-950 text-white px-4 py-3 flex items-center justify-between shadow">
+      <div class="flex items-center gap-2.5">
+        <i class="fa-solid fa-hospital text-sky-400 text-xl"></i>
+        <span class="font-bold tracking-wide">SIMKLINIK</span>
+      </div>
+      <button onclick="toggleMobileSidebar()" class="text-white p-1.5 rounded-lg hover:bg-blue-900">
+        <i class="fa-solid fa-bars text-lg"></i>
+      </button>
+    </div>
+
+    <!-- Sidebar Navigasi Kiri -->
+    <aside id="sidebarNav" class="hidden md:flex w-64 bg-blue-950 text-white flex-col justify-between shrink-0 transition-all z-30">
+      <div>
+        <!-- Brand Header -->
+        <div class="p-5 border-b border-blue-900/80 flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-300">
+            <i class="fa-solid fa-hospital text-lg"></i>
+          </div>
+          <div>
+            <div class="font-bold text-base tracking-wide leading-tight">SIMKLINIK</div>
+            <div id="sidebarRoleBadge" class="text-[10px] font-semibold bg-sky-500/20 text-sky-300 px-2 py-0.5 rounded mt-1 inline-block">
+              ROLE
+            </div>
+          </div>
+        </div>
+
+        <!-- Menu Navigasi (Dirender Sesuai Hak Akses Role) -->
+        <nav id="sidebarMenuContainer" class="p-3 space-y-1 text-sm overflow-y-auto max-h-[calc(100vh-170px)] scrollbar-thin"></nav>
+      </div>
+
+      <!-- Info Pengguna & Logout -->
+      <div class="p-4 border-t border-blue-900/80 bg-blue-950/60">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-9 h-9 rounded-full bg-sky-600 flex items-center justify-center font-bold text-sm text-white shrink-0" id="userAvatarInitial">
+            U
+          </div>
+          <div class="overflow-hidden">
+            <div id="sidebarUserName" class="text-xs font-bold text-white truncate">Nama Pengguna</div>
+            <div id="sidebarUserSub" class="text-[11px] text-sky-300 truncate">@username</div>
+          </div>
+        </div>
+        <button onclick="logout()" class="w-full py-2 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-red-200 text-xs font-semibold flex items-center justify-center gap-2 transition">
+          <i class="fa-solid fa-power-off"></i> Keluar Sistem
+        </button>
+      </div>
+    </aside>
+
+    <!-- Area Konten Kanan -->
+    <div class="flex-1 flex flex-col min-w-0">
+      <!-- Topbar -->
+      <header class="bg-white border-b border-slate-200 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-20">
+        <div>
+          <h2 id="pageTitle" class="text-lg font-bold text-blue-950">Dashboard Utama</h2>
+          <p id="pageSubtitle" class="text-xs text-slate-500">Ringkasan operasional klinik hari ini</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <span id="topSatusehatBadge" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+            <span class="w-2 h-2 rounded-full bg-slate-400"></span> SATUSEHAT: Mengecek...
+          </span>
+          <span class="text-xs text-slate-500 hidden sm:inline" id="currentDateDisplay"></span>
+        </div>
+      </header>
+
+      <!-- Kontainer Modul Dinamis -->
+      <main id="mainContent" class="flex-1 p-6 space-y-6 overflow-y-auto"></main>
+    </div>
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- 3. SCRIPT UTAMA APLIKASI (API Client, RBAC Router, Modul UI)          -->
+  <!-- ===================================================================== -->
+  <script>
+    // =========================================================================
+    // KONFIGURASI ENDPOINT BACKEND GOOGLE APPS SCRIPT
+    // Ganti URL di bawah ini dengan URL Web App Deployment GAS Anda
+    // =========================================================================
+    const GAS_API_URL = 'https://script.google.com/macros/s/AKfycbwvf5Pacl023fHuFVdnZfBnaMjqXACci4U6D5ChVbMF4Ki-I91KGzfuoN8tlPf6lv9W/exec';
+
+    let CURRENT_USER = null;
+    let CHART_KUNJUNGAN = null;
+
+    // Daftar Menu & Hak Akses Jabatan (RBAC)
+    const APP_MENUS = [
+      { id: 'dashboard', label: 'Dashboard Utama', sub: 'Statistik real-time & status SATUSEHAT', icon: 'fa-chart-line', roles: ['SUPER_ADMIN', 'ADMIN', 'DOKTER', 'PERAWAT', 'PENDAFTARAN', 'FARMASI', 'LAB', 'KASIR', 'MANAJEMEN'] },
+      { id: 'pendaftaran', label: 'Pendaftaran Pasien', sub: 'Registrasi pasien baru, pencarian & IHS SATUSEHAT', icon: 'fa-user-plus', roles: ['SUPER_ADMIN', 'ADMIN', 'PENDAFTARAN'] },
+      { id: 'antrean', label: 'Antrean & Penjadwalan', sub: 'Kelola antrean poli & cetak nomor antrean', icon: 'fa-list-ol', roles: ['SUPER_ADMIN', 'ADMIN', 'PENDAFTARAN', 'PERAWAT', 'DOKTER'] },
+      { id: 'rme', label: 'Rekam Medis (RME)', sub: 'SOAP, ICD-10, Resep & Riwayat Revisi', icon: 'fa-stethoscope', roles: ['SUPER_ADMIN', 'DOKTER', 'PERAWAT'] },
+      { id: 'farmasi', label: 'Modul Farmasi', sub: 'Verifikasi resep, stok batch & etiket obat', icon: 'fa-pills', roles: ['SUPER_ADMIN', 'ADMIN', 'FARMASI'] },
+      { id: 'kasir', label: 'Kasir & Pembayaran', sub: 'Tagihan layanan, diskon & cetak kuitansi', icon: 'fa-cash-register', roles: ['SUPER_ADMIN', 'ADMIN', 'KASIR'] },
+      { id: 'satusehat', label: 'Integrasi SATUSEHAT', sub: 'Konfigurasi FHIR R4, log pengiriman & retry', icon: 'fa-network-wired', roles: ['SUPER_ADMIN', 'ADMIN', 'MANAJEMEN'] },
+      { id: 'master', label: 'Master Data Klinik', sub: 'Profil klinik, Nakes, Poli, Tindakan & Obat', icon: 'fa-database', roles: ['SUPER_ADMIN', 'ADMIN'] },
+      { id: 'history', label: 'Audit History', sub: 'Rekam jejak seluruh aktivitas pengguna di sistem', icon: 'fa-clock-rotate-left', roles: ['SUPER_ADMIN', 'ADMIN', 'MANAJEMEN'] }
+    ];
+
+    // =========================================================================
+    // KOMUNIKASI BACKEND AMAN (Zero Data Exposure di HTML)
+    // =========================================================================
+    async function callBackend(action, payload = {}) {
+      const token = sessionStorage.getItem('simklinik_token') || '';
+      try {
+        const response = await fetch(GAS_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action, token, ...payload })
+        });
+        const result = await response.json();
+
+        if (result.code === 401) {
+          sessionStorage.clear();
+          Swal.fire('Sesi Berakhir', 'Silakan login kembali untuk melanjutkan.', 'warning').then(() => location.reload());
+          return null;
+        }
+        return result;
+      } catch (error) {
+        Swal.fire('Koneksi Terputus', 'Gagal menghubungi server backend: ' + error.message, 'error');
+        return { status: 'error', message: error.message };
+      }
+    }
+
+    // =========================================================================
+    // AUTENTIKASI & SESSION MANAGEMENT
+    // =========================================================================
+    document.getElementById('formLogin').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      Swal.fire({ title: 'Memverifikasi Kredensial...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      const res = await callBackend('login', { username, password });
+      Swal.close();
+
+      if (res && res.status === 'success') {
+        sessionStorage.setItem('simklinik_token', res.token);
+        sessionStorage.setItem('simklinik_user', JSON.stringify(res.user));
+        CURRENT_USER = res.user;
+        initAppShell();
+      } else if (res) {
+        Swal.fire('Login Gagal', res.message || 'Username atau password salah.', 'error');
+      }
+    });
+
+    function lupaPassword() {
+      Swal.fire({
+        title: 'Lupa Password?',
+        text: 'Demi keamanan data medis pasien, reset password hanya dapat dilakukan oleh Super Admin / Admin Klinik melalui menu Manajemen Pengguna.',
+        icon: 'info',
+        confirmButtonColor: '#1e3a8a'
+      });
+    }
+
+    async function logout() {
+      const confirm = await Swal.fire({
+        title: 'Keluar dari SIMKLINIK?',
+        text: 'Sesi Anda akan diakhiri dan dicatat di log aktivitas.',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#1e3a8a',
+        cancelButtonText: 'Batal',
+        confirmButtonText: 'Ya, Keluar'
+      });
+      if (confirm.isConfirmed) {
+        await callBackend('logout');
+        sessionStorage.clear();
+        location.reload();
+      }
+    }
+
+    function toggleMobileSidebar() {
+      const nav = document.getElementById('sidebarNav');
+      nav.classList.toggle('hidden');
+      nav.classList.toggle('fixed');
+      nav.classList.toggle('inset-y-0');
+      nav.classList.toggle('left-0');
+    }
+
+    // =========================================================================
+    // INISIALISASI TAMPILAN APLIKASI & SIDEBAR RBAC
+    // =========================================================================
+    function initAppShell() {
+      document.getElementById('loginView').classList.add('hidden');
+      document.getElementById('appView').classList.remove('hidden');
+
+      document.getElementById('sidebarRoleBadge').innerText = CURRENT_USER.role;
+      document.getElementById('sidebarUserName').innerText = CURRENT_USER.nama;
+      document.getElementById('sidebarUserSub').innerText = '@' + CURRENT_USER.username;
+      document.getElementById('userAvatarInitial').innerText = CURRENT_USER.nama.charAt(0).toUpperCase();
+      document.getElementById('currentDateDisplay').innerText = new Date().toLocaleDateString('id-ID', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      });
+
+      const allowedMenus = APP_MENUS.filter(m => m.roles.includes(CURRENT_USER.role));
+      const menuHtml = allowedMenus.map(m => `
+        <button onclick="navigate('${m.id}')" id="nav-${m.id}"
+          class="nav-item w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left text-sky-100 hover:bg-blue-900 transition">
+          <i class="fa-solid ${m.icon} w-5 text-center text-sky-400"></i>
+          <span class="font-medium">${m.label}</span>
+        </button>
+      `).join('');
+
+      document.getElementById('sidebarMenuContainer').innerHTML = menuHtml;
+      navigate('dashboard');
+    }
+
+    function navigate(pageId) {
+      const menuObj = APP_MENUS.find(m => m.id === pageId);
+      if (!menuObj || !menuObj.roles.includes(CURRENT_USER.role)) {
+        Swal.fire('Akses Ditolak', 'Jabatan Anda tidak memiliki hak akses ke halaman ini.', 'error');
+        return;
+      }
+
+      // Highlight menu aktif
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('bg-sky-600', 'text-white', 'shadow-sm'));
+      const activeNav = document.getElementById('nav-' + pageId);
+      if (activeNav) activeNav.classList.add('bg-sky-600', 'text-white', 'shadow-sm');
+
+      document.getElementById('pageTitle').innerText = menuObj.label;
+      document.getElementById('pageSubtitle').innerText = menuObj.sub;
+
+      // Tutup sidebar mobile jika terbuka
+      const nav = document.getElementById('sidebarNav');
+      if (nav.classList.contains('fixed')) toggleMobileSidebar();
+
+      // Routing ke renderer masing-masing modul
+      switch (pageId) {
+        case 'dashboard': renderDashboard(); break;
+        case 'pendaftaran': renderPendaftaran(); break;
+        case 'antrean': renderAntrean(); break;
+        case 'rme': renderRME(); break;
+        case 'farmasi': renderFarmasi(); break;
+        case 'kasir': renderKasir(); break;
+        case 'satusehat': renderSatusehat(); break;
+        case 'master': renderMasterData(); break;
+        case 'history': renderAuditHistory(); break;
+      }
+    }
+
+    // =========================================================================
+    // MODUL 1: DASHBOARD UTAMA
+    // =========================================================================
+    async function renderDashboard() {
+      const main = document.getElementById('mainContent');
+      main.innerHTML = `
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Pasien Hari Ini</p>
+              <h3 id="statPasienHariIni" class="text-2xl font-bold text-blue-950 mt-1">-</h3>
+              <span class="text-[11px] text-sky-600 font-medium" id="statPasienBaru">Pasien baru: -</span>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-users"></i>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Antrean Menunggu</p>
+              <h3 id="statMenunggu" class="text-2xl font-bold text-amber-600 mt-1">-</h3>
+              <span class="text-[11px] text-emerald-600 font-medium" id="statSelesai">Selesai periksa: -</span>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-clock"></i>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Pendapatan Hari Ini</p>
+              <h3 id="statPendapatan" class="text-2xl font-bold text-emerald-700 mt-1">Rp 0</h3>
+              <span class="text-[11px] text-slate-400">Terverifikasi kasir</span>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-wallet"></i>
+            </div>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p class="text-xs font-semibold text-slate-500 uppercase">Sync SATUSEHAT</p>
+              <div class="flex items-center gap-3 mt-1">
+                <span class="text-sm font-bold text-emerald-600"><i class="fa-solid fa-check-circle"></i> <span id="statSsSukses">0</span></span>
+                <span class="text-sm font-bold text-red-600"><i class="fa-solid fa-circle-xmark"></i> <span id="statSsGagal">0</span></span>
+              </div>
+              <span class="text-[11px] text-slate-400">Terkirim vs Gagal</span>
+            </div>
+            <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-900 flex items-center justify-center text-xl">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-sm font-bold text-blue-950 mb-4">Grafik Kunjungan Pasien (7 Hari Terakhir)</h3>
+            <canvas id="chartKunjungan" height="110"></canvas>
+          </div>
+
+          <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-sm font-bold text-blue-950">Aktivitas Terbaru</h3>
+              <span class="text-[11px] text-sky-600 font-semibold">Live Log</span>
+            </div>
+            <div id="dashboardRecentLogs" class="space-y-3 text-xs max-h-64 overflow-y-auto scrollbar-thin">
+              <p class="text-slate-400">Memuat aktivitas...</p>
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Ambil statistik & status SATUSEHAT dari backend
+      const [ssRes, histRes] = await Promise.all([
+        callBackend('ujiKoneksiSatusehat'),
+        callBackend('getHistory', { limit: 6 })
+      ]);
+
+      const badge = document.getElementById('topSatusehatBadge');
+      if (ssRes && ssRes.status === 'success') {
+        badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200';
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> SATUSEHAT: Terhubung (${ssRes.env})`;
+      } else {
+        badge.className = 'inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200';
+        badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> SATUSEHAT: Belum Dikonfigurasi`;
+      }
+
+      if (histRes && histRes.status === 'success') {
+        const logContainer = document.getElementById('dashboardRecentLogs');
+        if (histRes.data.length === 0) {
+          logContainer.innerHTML = '<p class="text-slate-400">Belum ada aktivitas tercatat.</p>';
+        } else {
+          logContainer.innerHTML = histRes.data.map(item => `
+            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+              <div class="flex justify-between text-[11px] text-slate-400 mb-0.5">
+                <span class="font-bold text-blue-900">${item.modul}</span>
+                <span>${item.waktu.split(' ')[1] || item.waktu}</span>
+              </div>
+              <div class="font-medium text-slate-700">${item.aktivitas}</div>
+              <div class="text-[11px] text-slate-500">Oleh: ${item.username} (${item.role})</div>
+            </div>
+          `).join('');
+        }
+      }
+
+      renderDummyChart();
+    }
+
+    function renderDummyChart() {
+      const ctx = document.getElementById('chartKunjungan');
+      if (!ctx) return;
+      if (CHART_KUNJUNGAN) CHART_KUNJUNGAN.destroy();
+      CHART_KUNJUNGAN = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'],
+          datasets: [{
+            label: 'Jumlah Kunjungan',
+            data: [18, 25, 22, 30, 28, 35, 19],
+            borderColor: '#0284c7',
+            backgroundColor: 'rgba(2, 132, 199, 0.1)',
+            fill: true,
+            tension: 0.35
+          }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+    }
+
+    // =========================================================================
+    // MODUL 2: PENDAFTARAN PASIEN BARU & PENCOCOKAN IHS SATUSEHAT
+    // =========================================================================
+    function renderPendaftaran() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- Form Pasien Baru -->
+          <div class="lg:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h3 class="text-base font-bold text-blue-950 mb-1">Registrasi Pasien Baru</h3>
+            <p class="text-xs text-slate-500 mb-5">Nomor Rekam Medis (No. RM) dibuat otomatis. Sistem akan mencocokkan NIK dengan IHS Number SATUSEHAT.</p>
+
+            <form id="formPasienBaru" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">NIK (16 Digit) *</label>
+                <input type="text" id="p_nik" maxlength="16" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none" placeholder="3201xxxxxxxxxxxx" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Lengkap (Sesuai KTP) *</label>
+                <input type="text" id="p_nama" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none" placeholder="Nama lengkap pasien" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Tempat Lahir *</label>
+                <input type="text" id="p_tempat_lahir" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Tanggal Lahir *</label>
+                <input type="date" id="p_tgl_lahir" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Jenis Kelamin *</label>
+                <select id="p_jk" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                  <option value="L">Laki-laki</option>
+                  <option value="P">Perempuan</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">No. WhatsApp / HP (Notifikasi GOWA) *</label>
+                <input type="tel" id="p_no_hp" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none" placeholder="0812xxxxxxxx" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Kontak Keluarga / Darurat</label>
+                <input type="text" id="p_kontak_darurat" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none" placeholder="Nama & No. HP Keluarga" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Penjamin / Pembayaran</label>
+                <select id="p_penjamin" class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none">
+                  <option value="UMUM">Umum / Pribadi</option>
+                  <option value="BPJS">BPJS Kesehatan</option>
+                  <option value="ASURANSI">Asuransi Swasta</option>
+                </select>
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Alamat Domisili *</label>
+                <textarea id="p_alamat" rows="2" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none"></textarea>
+              </div>
+              <div class="md:col-span-2 flex justify-end gap-3 pt-2">
+                <button type="reset" class="px-4 py-2 rounded-xl border border-slate-300 text-slate-600 hover:bg-slate-50 font-medium">Reset</button>
+                <button type="submit" class="px-6 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold shadow-sm">
+                  <i class="fa-solid fa-floppy-disk mr-1.5"></i> Simpan & Cek IHS SATUSEHAT
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Pencarian Pasien Lama & Buat Antrean -->
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <h3 class="text-base font-bold text-blue-950">Pendaftaran Kunjungan / Antrean</h3>
+            <p class="text-xs text-slate-500">Daftarkan pasien ke poli tujuan dan kirim tiket nomor antrean via WhatsApp GOWA.</p>
+
+            <form id="formBuatAntrean" class="space-y-3 text-sm">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">No. Rekam Medis *</label>
+                <input type="text" id="a_no_rm" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="RM-000001" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Pasien *</label>
+                <input type="text" id="a_nama_pasien" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">No. WhatsApp Tujuan *</label>
+                <input type="tel" id="a_no_hp" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="0812xxxxxxxx" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Poli Tujuan *</label>
+                <select id="a_poli" class="w-full px-3.5 py-2 rounded-xl border border-slate-300">
+                  <option value="POLI-01|UMU|Poli Umum">Poli Umum</option>
+                  <option value="POLI-02|GIG|Poli Gigi">Poli Gigi</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Dokter Pemeriksa *</label>
+                <input type="text" id="a_dokter" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" value="dr. Umum Klinik" />
+              </div>
+              <button type="submit" class="w-full py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-semibold shadow-sm mt-2">
+                <i class="fa-brands fa-whatsapp mr-1.5"></i> Buat Antrean & Kirim WA
+              </button>
+            </form>
+          </div>
+        </div>
+      `;
+
+      // Submit Pasien Baru
+      document.getElementById('formPasienBaru').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        Swal.fire({ title: 'Menyimpan & Mencocokkan IHS SATUSEHAT...', didOpen: () => Swal.showLoading() });
+        const res = await callBackend('daftarPasienBaru', {
+          data: {
+            nik: document.getElementById('p_nik').value.trim(),
+            nama: document.getElementById('p_nama').value.trim(),
+            tempat_lahir: document.getElementById('p_tempat_lahir').value.trim(),
+            tgl_lahir: document.getElementById('p_tgl_lahir').value,
+            jk: document.getElementById('p_jk').value,
+            no_hp: document.getElementById('p_no_hp').value.trim(),
+            kontak_darurat: document.getElementById('p_kontak_darurat').value.trim(),
+            penjamin: document.getElementById('p_penjamin').value,
+            alamat: document.getElementById('p_alamat').value.trim()
+          }
+        });
+        if (res && res.status === 'success') {
+          document.getElementById('a_no_rm').value = res.no_rm;
+          document.getElementById('a_nama_pasien').value = document.getElementById('p_nama').value.trim();
+          document.getElementById('a_no_hp').value = document.getElementById('p_no_hp').value.trim();
+          Swal.fire('Pasien Terdaftar!', `No. RM: <b>${res.no_rm}</b><br>SATUSEHAT IHS: <b>${res.ihs_number}</b>`, 'success');
+          e.target.reset();
+        } else if (res) {
+          Swal.fire('Gagal', res.message, 'error');
+        }
+      });
+
+      // Submit Antrean + Notifikasi WA GOWA
+      document.getElementById('formBuatAntrean').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const [poli_id, kode_poli, nama_poli] = document.getElementById('a_poli').value.split('|');
+        Swal.fire({ title: 'Membuat Antrean & Mengirim WA...', didOpen: () => Swal.showLoading() });
+        const res = await callBackend('buatAntrean', {
+          data: {
+            no_rm: document.getElementById('a_no_rm').value.trim(),
+            nama_pasien: document.getElementById('a_nama_pasien').value.trim(),
+            no_hp: document.getElementById('a_no_hp').value.trim(),
+            poli_id, kode_poli, nama_poli,
+            nakes_id: 'NAKES-01',
+            nama_dokter: document.getElementById('a_dokter').value.trim()
+          }
+        });
+        if (res && res.status === 'success') {
+          Swal.fire({
+            title: 'Antrean Berhasil Dibuat',
+            html: `Nomor Antrean: <h2 class="text-3xl font-bold text-blue-900 my-2">${res.no_antrean}</h2><p class="text-xs text-slate-500">Notifikasi WhatsApp telah dikirim ke pasien via GOWA.</p>`,
+            icon: 'success',
+            showCancelButton: true,
+            confirmButtonText: 'Cetak Tiket Antrean',
+            cancelButtonText: 'Tutup'
+          }).then(r => {
+            if (r.isConfirmed) {
+              cetakDokumen(`
+                <div style="text-align:center; font-family:monospace; width:260px; margin:auto;">
+                  <h3 style="margin:0;">SIMKLINIK</h3>
+                  <p style="font-size:11px; margin:2px 0 10px;">Tiket Antrean Kunjungan</p>
+                  <hr/>
+                  <p style="margin:8px 0 2px; font-size:12px;">${nama_poli}</p>
+                  <h1 style="font-size:36px; margin:4px 0;">${res.no_antrean}</h1>
+                  <p style="font-size:11px;">No. RM: ${document.getElementById('a_no_rm').value}</p>
+                  <p style="font-size:10px; color:#555;">${new Date().toLocaleString('id-ID')}</p>
+                </div>
+              `);
+            }
+          });
+        } else if (res) {
+          Swal.fire('Gagal', res.message, 'error');
+        }
+      });
+    }
+
+    // =========================================================================
+    // MODUL 3: REKAM MEDIS ELEKTRONIK (RME SOAP + PENGESAHAN & KOREKSI AUDIT)
+    // =========================================================================
+    function renderRME() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex flex-wrap justify-between items-center gap-3 pb-4 mb-5 border-b border-slate-100">
+            <div>
+              <h3 class="text-base font-bold text-blue-950">Formulir Pemeriksaan & Rekam Medis Elektronik (SOAP)</h3>
+              <p class="text-xs text-slate-500">Data yang sudah disahkan (Final) tidak dapat diubah diam-diam; setiap koreksi wajib disertai alasan audit.</p>
+            </div>
+            <button onclick="bukaModalKoreksiRME()" class="px-3.5 py-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 text-xs font-semibold">
+              <i class="fa-solid fa-pen-to-square mr-1"></i> Ajukan Koreksi RME Tersahkan
+            </button>
+          </div>
+
+          <form id="formRME" class="space-y-5 text-sm">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-sky-50/60 p-4 rounded-xl border border-sky-100">
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Kode Kunjungan *</label>
+                <input type="text" id="rme_kode_kunjungan" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white" placeholder="VIS-2026..." />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Nomor Rekam Medis *</label>
+                <input type="text" id="rme_no_rm" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white" placeholder="RM-000001" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-slate-600 mb-1">Rencana Kontrol</label>
+                <input type="date" id="rme_tgl_kontrol" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white" />
+              </div>
+            </div>
+
+            <!-- A. Anamnesis (Subjective) -->
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-sky-700 mb-2">A. Anamnesis (Subjective)</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <textarea id="rme_keluhan" rows="2" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="Keluhan utama & riwayat penyakit sekarang..."></textarea>
+                <textarea id="rme_alergi" rows="2" class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="Riwayat alergi obat/makanan & penyakit dahulu..."></textarea>
+              </div>
+            </div>
+
+            <!-- B. Pemeriksaan Fisik (Objective) -->
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-sky-700 mb-2">B. Tanda Vital & Pemeriksaan Fisik (Objective)</h4>
+              <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                <div>
+                  <label class="block text-[11px] text-slate-500 mb-1">Tensi (mmHg)</label>
+                  <input type="text" id="rme_td" class="w-full px-3 py-1.5 rounded-lg border border-slate-300" placeholder="120/80" />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-500 mb-1">Nadi (x/mnt)</label>
+                  <input type="number" id="rme_nadi" class="w-full px-3 py-1.5 rounded-lg border border-slate-300" placeholder="80" />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-500 mb-1">Suhu (°C)</label>
+                  <input type="number" step="0.1" id="rme_suhu" class="w-full px-3 py-1.5 rounded-lg border border-slate-300" placeholder="36.5" />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-500 mb-1">RR (x/mnt)</label>
+                  <input type="number" id="rme_rr" class="w-full px-3 py-1.5 rounded-lg border border-slate-300" placeholder="20" />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-500 mb-1">SpO2 (%)</label>
+                  <input type="number" id="rme_spo2" class="w-full px-3 py-1.5 rounded-lg border border-slate-300" placeholder="99" />
+                </div>
+                <div>
+                  <label class="block text-[11px] text-slate-500 mb-1">BB / TB (kg/cm)</label>
+                  <input type="text" id="rme_bbtb" class="w-full px-3 py-1.5 rounded-lg border border-slate-300" placeholder="65 / 170" />
+                </div>
+              </div>
+            </div>
+
+            <!-- C. Diagnosis (Assessment) -->
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-sky-700 mb-2">C. Diagnosis (Assessment - Standar ICD-10)</h4>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div>
+                  <input type="text" id="rme_icd10" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 font-mono" placeholder="Kode ICD-10 (Misal: J06.9)" />
+                </div>
+                <div class="md:col-span-2">
+                  <input type="text" id="rme_diagnosis" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="Nama Diagnosis Utama & Tambahan" />
+                </div>
+              </div>
+            </div>
+
+            <!-- D. Tindakan, Resep & Edukasi (Plan) -->
+            <div>
+              <h4 class="text-xs font-bold uppercase tracking-wider text-sky-700 mb-2">D. Terapi, Resep Obat & Edukasi (Plan)</h4>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <textarea id="rme_resep" rows="3" class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="Resep Obat (Nama Obat, Dosis, Frekuensi, Durasi)..."></textarea>
+                <textarea id="rme_edukasi" rows="3" class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="Tindakan medis & edukasi pasien..."></textarea>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap justify-end gap-3 pt-3 border-t border-slate-100">
+              <button type="button" onclick="submitRME(false)" class="px-5 py-2.5 rounded-xl border border-sky-600 text-sky-700 hover:bg-sky-50 font-semibold">
+                Simpan Draft
+              </button>
+              <button type="button" onclick="submitRME(true)" class="px-6 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white font-semibold shadow-sm">
+                <i class="fa-solid fa-lock mr-1.5"></i> Sahkan RME Final & Antrekan ke SATUSEHAT
+              </button>
+            </div>
+          </form>
+        </div>
+      `;
+    }
+
+    async function submitRME(isFinal) {
+      const payload = {
+        kode_kunjungan: document.getElementById('rme_kode_kunjungan').value.trim(),
+        no_rm: document.getElementById('rme_no_rm').value.trim(),
+        subjektif: {
+          keluhan: document.getElementById('rme_keluhan').value,
+          alergi: document.getElementById('rme_alergi').value
+        },
+        objektif: {
+          td: document.getElementById('rme_td').value,
+          nadi: document.getElementById('rme_nadi').value,
+          suhu: document.getElementById('rme_suhu').value,
+          rr: document.getElementById('rme_rr').value,
+          spo2: document.getElementById('rme_spo2').value,
+          bbtb: document.getElementById('rme_bbtb').value
+        },
+        icd10: document.getElementById('rme_icd10').value.trim(),
+        diagnosis: document.getElementById('rme_diagnosis').value.trim(),
+        tindakan: [],
+        resep: document.getElementById('rme_resep').value,
+        edukasi: document.getElementById('rme_edukasi').value,
+        tgl_kontrol: document.getElementById('rme_tgl_kontrol').value,
+        is_final: isFinal
+      };
+
+      if (!payload.kode_kunjungan || !payload.no_rm || !payload.icd10) {
+        Swal.fire('Data Belum Lengkap', 'Kode Kunjungan, No. RM, dan Kode ICD-10 wajib diisi.', 'warning');
+        return;
+      }
+
+      Swal.fire({ title: 'Menyimpan Rekam Medis...', didOpen: () => Swal.showLoading() });
+      const res = await callBackend('simpanRME', { data: payload });
+      if (res && res.status === 'success') {
+        Swal.fire('Tersimpan', `${res.message}<br>ID RME: <b>${res.rme_id}</b>`, 'success');
+      } else if (res) {
+        Swal.fire('Gagal', res.message, 'error');
+      }
+    }
+
+    async function bukaModalKoreksiRME() {
+      const { value: formValues } = await Swal.fire({
+        title: 'Koreksi RME Tersahkan (Audit Trail)',
+        html: `
+          <div class="text-left space-y-2 text-xs">
+            <label class="font-bold">ID RME yang dikoreksi *</label>
+            <input id="swal_rme_id" class="swal2-input !m-0 !w-full !text-sm" placeholder="RME-2026..." />
+            <label class="font-bold block pt-2">Kode ICD-10 Baru *</label>
+            <input id="swal_icd10" class="swal2-input !m-0 !w-full !text-sm" placeholder="Kode ICD-10" />
+            <label class="font-bold block pt-2">Diagnosis Baru *</label>
+            <input id="swal_diag" class="swal2-input !m-0 !w-full !text-sm" placeholder="Diagnosis terkoreksi" />
+            <label class="font-bold block pt-2">Alasan Koreksi (Wajib untuk Audit) *</label>
+            <textarea id="swal_alasan" class="swal2-textarea !m-0 !w-full !text-sm" placeholder="Jelaskan alasan perubahan data medis..."></textarea>
+          </div>
+        `,
+        focusConfirm: false,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan Koreksi',
+        confirmButtonColor: '#1e3a8a',
+        preConfirm: () => {
+          return {
+            rme_id: document.getElementById('swal_rme_id').value.trim(),
+            icd10: document.getElementById('swal_icd10').value.trim(),
+            diagnosis: document.getElementById('swal_diag').value.trim(),
+            alasan_koreksi: document.getElementById('swal_alasan').value.trim(),
+            tindakan: [],
+            resep: ''
+          };
+        }
+      });
+
+      if (formValues && formValues.rme_id && formValues.alasan_koreksi) {
+        const res = await callBackend('koreksiRME', { data: formValues });
+        if (res && res.status === 'success') {
+          Swal.fire('Koreksi Tercatat', res.message, 'success');
+        } else if (res) {
+          Swal.fire('Gagal', res.message, 'error');
+        }
+      }
+    }
+
+    // =========================================================================
+    // MODUL 4: INTEGRASI SATUSEHAT KEMENKES
+    // =========================================================================
+    function renderSatusehat() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+          <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-4">
+            <div>
+              <h3 class="text-base font-bold text-blue-950">Gateway Interoperabilitas SATUSEHAT (HL7 FHIR R4)</h3>
+              <p class="text-xs text-slate-500">Client ID & Client Secret disimpan terisolasi di server Google Apps Script (PropertiesService).</p>
+            </div>
+            <button onclick="ujiKoneksiSS()" class="px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white text-xs font-semibold shadow-sm">
+              <i class="fa-solid fa-plug-circle-check mr-1.5"></i> Uji Koneksi & Token OAuth2
+            </button>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+            <div class="p-4 rounded-xl bg-sky-50 border border-sky-100">
+              <div class="font-bold text-blue-950 mb-1">1. Autentikasi OAuth 2.0</div>
+              <p class="text-slate-600">Token Bearer diperbarui otomatis oleh backend server sebelum kedaluwarsa.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-sky-50 border border-sky-100">
+              <div class="font-bold text-blue-950 mb-1">2. Resource FHIR Terdukung</div>
+              <p class="text-slate-600">Patient (IHS Lookup), Practitioner, Location, Encounter, Condition (ICD-10), Observation, Medication.</p>
+            </div>
+            <div class="p-4 rounded-xl bg-sky-50 border border-sky-100">
+              <div class="font-bold text-blue-950 mb-1">3. Idempotency & Anti-Duplikasi</div>
+              <p class="text-slate-600">Setiap transaksi memiliki UUID unik dan status terpisah (Lokal, Antrean, Berhasil, Gagal).</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function ujiKoneksiSS() {
+      Swal.fire({ title: 'Menghubungi Server SATUSEHAT Kemenkes...', didOpen: () => Swal.showLoading() });
+      const res = await callBackend('ujiKoneksiSatusehat');
+      if (res && res.status === 'success') {
+        Swal.fire('Koneksi Berhasil (' + res.env + ')', res.message, 'success');
+      } else if (res) {
+        Swal.fire('Koneksi Gagal / Belum Dikonfigurasi', res.message, 'warning');
+      }
+    }
+
+    // =========================================================================
+    // MODUL 5: AUDIT HISTORY (CATATAN SELURUH KEGIATAN APLIKASI)
+    // =========================================================================
+    async function renderAuditHistory() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
+            <div>
+              <h3 class="text-base font-bold text-blue-950">Log Audit & Riwayat Aktivitas Sistem</h3>
+              <p class="text-xs text-slate-500">Mencatat seluruh aktivitas login, pendaftaran, RME, farmasi, kasir, dan pengiriman SATUSEHAT.</p>
+            </div>
+            <button onclick="loadHistoryTable()" class="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold">
+              <i class="fa-solid fa-rotate mr-1"></i> Segarkan Data
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                  <th class="p-3">Waktu</th>
+                  <th class="p-3">Pengguna</th>
+                  <th class="p-3">Role</th>
+                  <th class="p-3">Modul</th>
+                  <th class="p-3">Aktivitas</th>
+                  <th class="p-3">Detail</th>
+                  <th class="p-3">Status</th>
+                </tr>
+              </thead>
+              <tbody id="historyTableBody" class="divide-y divide-slate-100">
+                <tr><td colspan="7" class="p-6 text-center text-slate-400">Memuat catatan aktivitas...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      loadHistoryTable();
+    }
+
+    async function loadHistoryTable() {
+      const res = await callBackend('getHistory', { limit: 150 });
+      const tbody = document.getElementById('historyTableBody');
+      if (!tbody) return;
+
+      if (!res || res.status !== 'success' || res.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada data riwayat aktivitas.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = res.data.map(row => {
+        const badge = row.status === 'SUCCESS'
+          ? 'bg-emerald-100 text-emerald-700'
+          : 'bg-red-100 text-red-700';
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="p-3 whitespace-nowrap text-slate-500 font-mono text-[11px]">${row.waktu}</td>
+            <td class="p-3 font-semibold text-slate-800">${row.username}</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded bg-sky-50 text-sky-700 font-semibold text-[10px]">${row.role}</span></td>
+            <td class="p-3 font-bold text-blue-950">${row.modul}</td>
+            <td class="p-3">${row.aktivitas}</td>
+            <td class="p-3 text-slate-600 max-w-xs truncate" title='${String(row.detail_data).replace(/'/g, "&apos;")}'>${row.detail_data}</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badge}">${row.status}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Placeholder Modul Lain yang Siap Dikembangkan Lanjut
+    function renderAntrean() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-base font-bold text-blue-950 mb-2">Manajemen Antrean & Layar Panggil</h3>
+          <p class="text-xs text-slate-500">Daftar kunjungan aktif hari ini (Menunggu, Dipanggil, Diperiksa, Selesai) terhubung langsung dengan sheet KUNJUNGAN.</p>
+        </div>`;
+    }
+    function renderFarmasi() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-base font-bold text-blue-950 mb-2">Modul Farmasi & Pengelolaan Stok Obat (KFA)</h3>
+          <p class="text-xs text-slate-500">Verifikasi resep dokter, pengurangan stok otomatis berdasarkan batch/tanggal kedaluwarsa, dan cetak etiket obat.</p>
+        </div>`;
+    }
+    function renderKasir() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-base font-bold text-blue-950 mb-2">Kasir & Pembayaran Layanan</h3>
+          <p class="text-xs text-slate-500">Tagihan konsultasi, tindakan medis, obat, dan cetak kuitansi resmi klinik.</p>
+        </div>`;
+    }
+    function renderMasterData() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-base font-bold text-blue-950 mb-2">Master Data Klinik & Manajemen Pengguna</h3>
+          <p class="text-xs text-slate-500">Pengaturan Profil Klinik, Organization ID SATUSEHAT, Nakes (STR/SIP/IHS), Poli, Tarif Tindakan, dan Akun Pengguna.</p>
+        </div>`;
+    }
+
+    // Helper Cetak Dokumen PDF / Thermal
+    function cetakDokumen(htmlContent) {
+      const area = document.getElementById('printArea');
+      area.innerHTML = htmlContent;
+      area.classList.remove('hidden');
+      window.print();
+      area.classList.add('hidden');
+    }
+
+    // Cek Sesi Saat Halaman Dimuat
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUser = sessionStorage.getItem('simklinik_user');
+      const savedToken = sessionStorage.getItem('simklinik_token');
+      if (savedUser && savedToken) {
+        CURRENT_USER = JSON.parse(savedUser);
+        initAppShell();
+      }
+    });
+  </script>
+</body>
+</html>
