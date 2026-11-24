@@ -1376,6 +1376,9 @@
               <button onclick="kirimManualSatusehat()" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold">
                 <i class="fa-solid fa-paper-plane mr-1.5"></i> Kirim Kunjungan ke SATUSEHAT
               </button>
+			  <button onclick="bukaModalConfigSatusehat()" class="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white text-xs font-semibold">
+                <i class="fa-solid fa-key mr-1.5"></i> Atur Kredensial API
+              </button>
             </div>
           </div>
 
@@ -1448,7 +1451,57 @@
       }
       renderSatusehat();
     }
+	
+	async function bukaModalConfigSatusehat() {
+      const { value: cfg } = await Swal.fire({
+        title: 'Konfigurasi API SATUSEHAT Kemenkes',
+        html: `
+          <div class="text-left space-y-2.5 text-xs">
+            <p class="text-slate-500">Kredensial disimpan tertutup di server backend dan tidak akan ditampilkan kembali di browser.</p>
+            <div>
+              <label class="font-bold block mb-1">Environment *</label>
+              <select id="ss_env" class="swal2-input !m-0 !w-full !text-sm">
+                <option value="SANDBOX">SANDBOX (Uji Coba / Staging)</option>
+                <option value="PRODUCTION">PRODUCTION (Resmi / Live)</option>
+              </select>
+            </div>
+            <div>
+              <label class="font-bold block mb-1">Organization ID *</label>
+              <input id="ss_org" class="swal2-input !m-0 !w-full !text-sm font-mono" placeholder="Contoh: 10000004" />
+            </div>
+            <div>
+              <label class="font-bold block mb-1">Client ID *</label>
+              <input id="ss_cid" type="password" class="swal2-input !m-0 !w-full !text-sm font-mono" placeholder="Client ID dari Portal SATUSEHAT" />
+            </div>
+            <div>
+              <label class="font-bold block mb-1">Client Secret *</label>
+              <input id="ss_csec" type="password" class="swal2-input !m-0 !w-full !text-sm font-mono" placeholder="Client Secret dari Portal SATUSEHAT" />
+            </div>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Simpan & Uji Koneksi',
+        confirmButtonColor: '#1e3a8a',
+        preConfirm: () => ({
+          env: document.getElementById('ss_env').value,
+          org_id: document.getElementById('ss_org').value.trim(),
+          client_id: document.getElementById('ss_cid').value.trim(),
+          client_secret: document.getElementById('ss_csec').value.trim()
+        })
+      });
 
+      if (cfg && cfg.org_id && cfg.client_id && cfg.client_secret) {
+        Swal.fire({ title: 'Menyimpan Kredensial...', didOpen: () => Swal.showLoading() });
+        const res = await callBackend('simpanConfigSatusehat', { data: cfg });
+        if (res && res.status === 'success') {
+          await ujiKoneksiSS();
+          renderDashboard(); // Perbarui indikator status di topbar
+        } else if (res) {
+          Swal.fire('Gagal', res.message, 'error');
+        }
+      }
+    }
+	
     // =========================================================================
     // MODUL KASIR & PEMBAYARAN (Cetak Kuitansi & Notifikasi WA Lunas)
     // =========================================================================
