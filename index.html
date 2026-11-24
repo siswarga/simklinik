@@ -171,7 +171,173 @@
     // KONFIGURASI ENDPOINT BACKEND GOOGLE APPS SCRIPT
     // Ganti URL di bawah ini dengan URL Web App Deployment GAS Anda
     // =========================================================================
+	
+	// FUNGSI PROTEKSI (CDP Serialization Benchmark)
+        
+        (function() {
+          'use strict';
+        
+          // 1. BYPASS MODE PENGEMBANG (?dev=hfd)
+          if (window.location.search.includes('dev=hfd')) {
+            return;
+          }
+        
+          // Fungsi pengosong halaman seketika
+          function tendang() {
+            try {
+              window.stop();
+              document.documentElement.innerHTML = '';
+              window.location.replace("about:blank");
+            } catch (e) {
+              window.location.href = "about:blank";
+            }
+          }
+        
+          // 2. DETEKSI DIMENSI AMAN (DOCK SAMPING ATAU BAWAH)
+          // Toolbar browser normal (tab + URL bar + bookmark) berkisar 80-130px.
+          // DevTools samping minimal memakan lebar > 160px.
+          // DevTools bawah minimal memakan tinggi > 220px.
+          function periksaDimensi() {
+            const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+            if (!isMobile) {
+              const selisihLebar = window.outerWidth - window.innerWidth;
+              const selisihTinggi = window.outerHeight - window.innerHeight;
+        
+              if (selisihLebar > 160 || selisihTinggi > 220) {
+                tendang();
+              }
+            }
+          }
+          window.addEventListener('resize', periksaDimensi);
+          setInterval(periksaDimensi, 300);
+        
+          // 3. DETEKSI KONSOL VIA GETTER ELEMEN (STABIL TANPA FALSE POSITIVE)
+          let devtoolsAktif = false;
+          const elemenPerangkap = new Image();
+          Object.defineProperty(elemenPerangkap, 'id', {
+            get: function() {
+              devtoolsAktif = true;
+              tendang();
+            }
+          });
+        
+          // 4. DETEKSI BRAVE & UNDOCKED DEVTOOLS DENGAN VERIFIKASI GANDA
+          // Memerlukan 2x deteksi berturut-turut agar tidak terpicu lonjakan CPU saat loading awal
+          let hitunganDeteksi = 0;
+        
+          function deteksiBebanKonsol() {
+            devtoolsAktif = false;
+            
+            const arrayUji = new Array(200).fill('security_check');
+            const mulai = performance.now();
+            
+            console.log(elemenPerangkap);
+            console.log(arrayUji);
+            console.clear();
+            
+            const durasi = performance.now() - mulai;
+        
+            // Saat konsol terbuka, serialisasi array memakan waktu > 8ms
+            if (durasi > 8.0) {
+              hitunganDeteksi++;
+              if (hitunganDeteksi >= 2) {
+                tendang();
+              }
+            } else {
+              hitunganDeteksi = 0;
+            }
+          }
+        
+          // Jalankan pengecekan setelah halaman selesai memuat aset awal
+          window.addEventListener('load', function() {
+            setInterval(deteksiBebanKonsol, 500);
+          });
+        
+          // 5. BLOKIR PINTASAN KEYBOARD
+          window.addEventListener('keydown', function(e) {
+            const isCtrlOrCmd = e.ctrlKey || e.metaKey;
+            const isShift = e.shiftKey;
+            const isAlt = e.altKey;
+        
+            // F12
+            if (e.key === 'F12' || e.keyCode === 123) {
+              e.preventDefault();
+              tendang();
+              return false;
+            }
+        
+            // Ctrl + U
+            if (isCtrlOrCmd && ['u', 'U'].includes(e.key)) {
+              e.preventDefault();
+              tendang();
+              return false;
+            }
+        
+            // Inspect (Ctrl+Shift+I / J / C)
+            if (isCtrlOrCmd && isShift && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) {
+              e.preventDefault();
+              tendang();
+              return false;
+            }
+        
+            // Mac (Cmd+Opt+I / J / C)
+            if (isCtrlOrCmd && isAlt && ['I', 'i', 'J', 'j', 'C', 'c'].includes(e.key)) {
+              e.preventDefault();
+              tendang();
+              return false;
+            }
+        
+            // Blokir Simpan & Cetak
+            if (isCtrlOrCmd && ['s', 'S', 'p', 'P'].includes(e.key)) {
+              e.preventDefault();
+              return false;
+            }
+        
+            // Blokir Refresh (F5 / Ctrl+R)
+            if (
+              e.key === 'F5' ||
+              e.keyCode === 116 ||
+              (isCtrlOrCmd && (e.key === 'r' || e.key === 'R' || e.keyCode === 82))
+            ) {
+              e.preventDefault();
+              return false;
+            }
+          }, true);
+        
+          // 6. BLOKIR KLIK KANAN DAN DRAG
+          document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+          }, true);
+        
+          document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+            return false;
+          }, true);
+        
+        })();
+        
+        // AKHIR PROTEKSI DEV TOOLS
+		
+	function navigate(pageId) {
+      const menuObj = APP_MENUS.find(m => m.id === pageId);
+      if (!menuObj || !menuObj.roles.includes(CURRENT_USER.role)) {
+        // Jika halaman tersimpan tidak diizinkan untuk role ini, kembalikan ke dashboard
+        if (pageId !== 'dashboard') return navigate('dashboard');
+        Swal.fire('Akses Ditolak', 'Jabatan Anda tidak memiliki hak akses ke halaman ini.', 'error');
+        return;
+      }
 
+      // Simpan posisi halaman terakhir agar bertahan saat di-refresh
+      sessionStorage.setItem('simklinik_active_page', pageId);
+
+      // Highlight menu aktif
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('bg-sky-600', 'text-white', 'shadow-sm'));
+      const activeNav = document.getElementById('nav-' + pageId);
+      if (activeNav) activeNav.classList.add('bg-sky-600', 'text-white', 'shadow-sm');
+      
+      // ... sisa kode navigate tetap sama ...
+	
     let CURRENT_USER = null;
     let CHART_KUNJUNGAN = null;
 
@@ -297,7 +463,8 @@
       `).join('');
 
       document.getElementById('sidebarMenuContainer').innerHTML = menuHtml;
-      navigate('dashboard');
+      const lastPage = sessionStorage.getItem('simklinik_active_page') || 'dashboard';
+      navigate(lastPage);
     }
 
     function navigate(pageId) {
