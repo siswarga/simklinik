@@ -812,40 +812,6 @@
       }
     }
 
-    // =========================================================================
-    // MODUL 4: INTEGRASI SATUSEHAT KEMENKES
-    // =========================================================================
-    function renderSatusehat() {
-      document.getElementById('mainContent').innerHTML = `
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-          <div class="flex flex-wrap justify-between items-center gap-4 border-b border-slate-100 pb-4">
-            <div>
-              <h3 class="text-base font-bold text-blue-950">Gateway Interoperabilitas SATUSEHAT (HL7 FHIR R4)</h3>
-              <p class="text-xs text-slate-500">Client ID & Client Secret disimpan terisolasi di server Google Apps Script (PropertiesService).</p>
-            </div>
-            <button onclick="ujiKoneksiSS()" class="px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white text-xs font-semibold shadow-sm">
-              <i class="fa-solid fa-plug-circle-check mr-1.5"></i> Uji Koneksi & Token OAuth2
-            </button>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-            <div class="p-4 rounded-xl bg-sky-50 border border-sky-100">
-              <div class="font-bold text-blue-950 mb-1">1. Autentikasi OAuth 2.0</div>
-              <p class="text-slate-600">Token Bearer diperbarui otomatis oleh backend server sebelum kedaluwarsa.</p>
-            </div>
-            <div class="p-4 rounded-xl bg-sky-50 border border-sky-100">
-              <div class="font-bold text-blue-950 mb-1">2. Resource FHIR Terdukung</div>
-              <p class="text-slate-600">Patient (IHS Lookup), Practitioner, Location, Encounter, Condition (ICD-10), Observation, Medication.</p>
-            </div>
-            <div class="p-4 rounded-xl bg-sky-50 border border-sky-100">
-              <div class="font-bold text-blue-950 mb-1">3. Idempotency & Anti-Duplikasi</div>
-              <p class="text-slate-600">Setiap transaksi memiliki UUID unik dan status terpisah (Lokal, Antrean, Berhasil, Gagal).</p>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
     async function ujiKoneksiSS() {
       Swal.fire({ title: 'Menghubungi Server SATUSEHAT Kemenkes...', didOpen: () => Swal.showLoading() });
       const res = await callBackend('ujiKoneksiSatusehat');
@@ -923,14 +889,6 @@
       }).join('');
     }
 
-    // Placeholder Modul Lain yang Siap Dikembangkan Lanjut
-    function renderAntrean() {
-      document.getElementById('mainContent').innerHTML = `
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 class="text-base font-bold text-blue-950 mb-2">Manajemen Antrean & Layar Panggil</h3>
-          <p class="text-xs text-slate-500">Daftar kunjungan aktif hari ini (Menunggu, Dipanggil, Diperiksa, Selesai) terhubung langsung dengan sheet KUNJUNGAN.</p>
-        </div>`;
-    }
     function renderFarmasi() {
       document.getElementById('mainContent').innerHTML = `
         <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -938,13 +896,7 @@
           <p class="text-xs text-slate-500">Verifikasi resep dokter, pengurangan stok otomatis berdasarkan batch/tanggal kedaluwarsa, dan cetak etiket obat.</p>
         </div>`;
     }
-    function renderKasir() {
-      document.getElementById('mainContent').innerHTML = `
-        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-          <h3 class="text-base font-bold text-blue-950 mb-2">Kasir & Pembayaran Layanan</h3>
-          <p class="text-xs text-slate-500">Tagihan konsultasi, tindakan medis, obat, dan cetak kuitansi resmi klinik.</p>
-        </div>`;
-    }
+    
     function renderMasterData() {
       document.getElementById('mainContent').innerHTML = `
         <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
@@ -971,6 +923,290 @@
         initAppShell();
       }
     });
+	
+	// =========================================================================
+    // UPDATE DASHBOARD (Mengambil Angka Aktual dari Database Sheets)
+    // =========================================================================
+    async function loadActualDashboardStats() {
+      const res = await callBackend('getDashboardStats');
+      if (res && res.status === 'success') {
+        const s = res.stats;
+        document.getElementById('statPasienHariIni').innerText = s.kunjHariIni;
+        document.getElementById('statPasienBaru').innerText = `Pasien baru hari ini: ${s.pasienBaruHariIni}`;
+        document.getElementById('statMenunggu').innerText = s.menunggu;
+        document.getElementById('statSelesai').innerText = `Selesai periksa: ${s.selesai}`;
+        document.getElementById('statPendapatan').innerText = 'Rp ' + Number(s.pendapatanHariIni).toLocaleString('id-ID');
+        document.getElementById('statSsSukses').innerText = s.ssBerhasil;
+        document.getElementById('statSsGagal').innerText = s.ssGagal;
+      }
+    }
+
+    // =========================================================================
+    // MODUL ANTREAN REAL-TIME & PANGGIL PASIEN VIA WA GOWA
+    // =========================================================================
+    async function renderAntrean() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <div class="flex flex-wrap justify-between items-center gap-3 mb-5">
+            <div>
+              <h3 class="text-base font-bold text-blue-950">Daftar Antrean Kunjungan Hari Ini</h3>
+              <p class="text-xs text-slate-500">Klik "Panggil (WA)" untuk mengirim panggilan antrean langsung ke WhatsApp pasien.</p>
+            </div>
+            <button onclick="renderAntrean()" class="px-3.5 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold">
+              <i class="fa-solid fa-rotate mr-1"></i> Refresh Antrean
+            </button>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr class="bg-slate-100 text-slate-700 border-b">
+                  <th class="p-3">No. Antrean</th>
+                  <th class="p-3">Jam</th>
+                  <th class="p-3">No. RM & Nama Pasien</th>
+                  <th class="p-3">Poli</th>
+                  <th class="p-3">Penjamin</th>
+                  <th class="p-3">Status</th>
+                  <th class="p-3 text-right">Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tbodyAntrean" class="divide-y divide-slate-100">
+                <tr><td colspan="7" class="p-6 text-center text-slate-400">Memuat antrean hari ini...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+
+      const res = await callBackend('getAntreanHariIni');
+      const tbody = document.getElementById('tbodyAntrean');
+      if (!res || res.status !== 'success' || res.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada pasien dalam antrean hari ini.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = res.data.map(row => {
+        const badgeClass = row.status_antrean === 'SELESAI' ? 'bg-emerald-100 text-emerald-700' :
+                           row.status_antrean === 'DIPANGGIL' ? 'bg-amber-100 text-amber-700' :
+                           'bg-sky-100 text-sky-700';
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="p-3 font-bold text-blue-900 text-sm">${row.no_antrean}</td>
+            <td class="p-3 text-slate-500">${row.waktu}</td>
+            <td class="p-3">
+              <div class="font-bold text-slate-800">${row.nama_pasien}</div>
+              <div class="text-[11px] text-slate-400">${row.no_rm} • Kode: ${row.kode_kunjungan}</div>
+            </td>
+            <td class="p-3 font-medium">${row.nama_poli}</td>
+            <td class="p-3">${row.penjamin}</td>
+            <td class="p-3"><span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeClass}">${row.status_antrean}</span></td>
+            <td class="p-3 text-right space-x-1">
+              <button onclick="ubahStatusAntrean('${row.kode_kunjungan}', 'DIPANGGIL')" class="px-2.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-semibold text-[11px]">
+                <i class="fa-brands fa-whatsapp"></i> Panggil
+              </button>
+              <button onclick="ubahStatusAntrean('${row.kode_kunjungan}', 'DIPERIKSA')" class="px-2.5 py-1.5 rounded-lg bg-blue-900 hover:bg-blue-800 text-white font-semibold text-[11px]">
+                Periksa
+              </button>
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function ubahStatusAntrean(kodeKunjungan, statusBaru) {
+      Swal.fire({ title: 'Memperbarui status...', didOpen: () => Swal.showLoading() });
+      const res = await callBackend('updateStatusAntrean', { kode_kunjungan: kodeKunjungan, status_baru: statusBaru });
+      if (res && res.status === 'success') {
+        Swal.fire('Berhasil', res.message, 'success');
+        renderAntrean();
+      } else if (res) {
+        Swal.fire('Gagal', res.message, 'error');
+      }
+    }
+
+    // =========================================================================
+    // MODUL SATUSEHAT (Uji Koneksi + Tabel Monitoring Log + Tombol Kirim Ulang)
+    // =========================================================================
+    async function renderSatusehat() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="space-y-6">
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-wrap justify-between items-center gap-4">
+            <div>
+              <h3 class="text-base font-bold text-blue-950">Gateway Interoperabilitas SATUSEHAT (HL7 FHIR R4)</h3>
+              <p class="text-xs text-slate-500">Pemantauan status pengiriman Encounter, Condition, dan Observation ke Kemenkes RI.</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="ujiKoneksiSS()" class="px-4 py-2 rounded-xl bg-blue-900 hover:bg-blue-800 text-white text-xs font-semibold">
+                <i class="fa-solid fa-plug-circle-check mr-1.5"></i> Uji Koneksi Token
+              </button>
+              <button onclick="kirimManualSatusehat()" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white text-xs font-semibold">
+                <i class="fa-solid fa-paper-plane mr-1.5"></i> Kirim Kunjungan ke SATUSEHAT
+              </button>
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+            <h4 class="text-sm font-bold text-blue-950 mb-4">Log Pengiriman Resource FHIR</h4>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-100 text-slate-700 border-b">
+                    <th class="p-3">Waktu</th>
+                    <th class="p-3">Kode Kunjungan</th>
+                    <th class="p-3">Resource</th>
+                    <th class="p-3">Status</th>
+                    <th class="p-3">ID Resource SATUSEHAT</th>
+                    <th class="p-3">Keterangan / Error</th>
+                    <th class="p-3 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tbodySsLogs" class="divide-y divide-slate-100">
+                  <tr><td colspan="7" class="p-6 text-center text-slate-400">Memuat log pengiriman...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>`;
+
+      const res = await callBackend('getSatusehatLogs', { limit: 50 });
+      const tbody = document.getElementById('tbodySsLogs');
+      if (!res || res.status !== 'success' || res.data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="p-6 text-center text-slate-400">Belum ada riwayat pengiriman ke SATUSEHAT.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = res.data.map(r => {
+        const badge = r.status_kirim === 'SUCCESS' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700';
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="p-3 whitespace-nowrap text-slate-500">${r.waktu}</td>
+            <td class="p-3 font-mono font-semibold">${r.kode_kunjungan}</td>
+            <td class="p-3 font-bold text-blue-900">${r.resource_type}</td>
+            <td class="p-3"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${badge}">${r.status_kirim}</span></td>
+            <td class="p-3 font-mono text-[11px] text-emerald-700">${r.resource_id_ss || '-'}</td>
+            <td class="p-3 text-slate-500 max-w-xs truncate" title="${r.error_msg || 'OK'}">${r.error_msg || 'Diterima server Kemenkes'}</td>
+            <td class="p-3 text-right">
+              ${r.status_kirim === 'FAILED' ? `<button onclick="retrySatusehat('${r.kode_kunjungan}')" class="px-2.5 py-1 rounded bg-amber-500 text-white font-semibold text-[10px]">Kirim Ulang</button>` : '-'}
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    async function kirimManualSatusehat() {
+      const { value: kode } = await Swal.fire({
+        title: 'Kirim Data Kunjungan ke SATUSEHAT',
+        input: 'text',
+        inputLabel: 'Masukkan Kode Kunjungan (yang RME-nya sudah diisi)',
+        inputPlaceholder: 'VIS-2026...',
+        showCancelButton: true,
+        confirmButtonColor: '#1e3a8a'
+      });
+      if (kode) retrySatusehat(kode.trim());
+    }
+
+    async function retrySatusehat(kodeKunjungan) {
+      Swal.fire({ title: 'Mengirim Bundle FHIR ke SATUSEHAT...', didOpen: () => Swal.showLoading() });
+      const res = await callBackend('kirimUlangSatusehat', { kode_kunjungan: kodeKunjungan });
+      if (res && res.status === 'success') {
+        Swal.fire('Terkirim!', res.message, 'success');
+      } else if (res) {
+        Swal.fire('Gagal Terkirim', res.message, 'error');
+      }
+      renderSatusehat();
+    }
+
+    // =========================================================================
+    // MODUL KASIR & PEMBAYARAN (Cetak Kuitansi & Notifikasi WA Lunas)
+    // =========================================================================
+    function renderKasir() {
+      document.getElementById('mainContent').innerHTML = `
+        <div class="max-w-2xl bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 class="text-base font-bold text-blue-950 mb-1">Kasir & Pelunasan Tagihan Pasien</h3>
+          <p class="text-xs text-slate-500 mb-5">Mencatat pembayaran, menutup kunjungan menjadi SELESAI, mencetak kuitansi, dan mengirim bukti lunas ke WA pasien.</p>
+
+          <form id="formKasir" class="space-y-4 text-sm">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Kode Kunjungan *</label>
+                <input type="text" id="k_kode" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="VIS-2026..." />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">No. Rekam Medis *</label>
+                <input type="text" id="k_norm" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="RM-000001" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Nama Pasien *</label>
+                <input type="text" id="k_nama" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">No. WhatsApp (Kirim Kuitansi) *</label>
+                <input type="tel" id="k_hp" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="0812xxxxxxxx" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Total Tagihan (Rp) *</label>
+                <input type="number" id="k_subtotal" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300" placeholder="150000" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Diskon (Rp)</label>
+                <input type="number" id="k_diskon" value="0" class="w-full px-3.5 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-semibold text-slate-600 mb-1">Metode Pembayaran *</label>
+                <select id="k_metode" class="w-full px-3.5 py-2 rounded-xl border border-slate-300">
+                  <option value="TUNAI">Tunai (Cash)</option>
+                  <option value="QRIS">QRIS / Pembayaran Digital</option>
+                  <option value="TRANSFER">Transfer Bank</option>
+                  <option value="PENJAMIN">Penjamin / BPJS / Asuransi</option>
+                </select>
+              </div>
+            </div>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-sm">
+              <i class="fa-solid fa-check-double mr-1.5"></i> Proses Pembayaran Lunas & Cetak Kuitansi
+            </button>
+          </form>
+        </div>`;
+
+      document.getElementById('formKasir').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const subtotal = Number(document.getElementById('k_subtotal').value);
+        const diskon = Number(document.getElementById('k_diskon').value);
+        const nama = document.getElementById('k_nama').value.trim();
+
+        Swal.fire({ title: 'Memproses Pembayaran...', didOpen: () => Swal.showLoading() });
+        const res = await callBackend('prosesPembayaran', {
+          data: {
+            kode_kunjungan: document.getElementById('k_kode').value.trim(),
+            no_rm: document.getElementById('k_norm').value.trim(),
+            nama_pasien: nama,
+            no_hp: document.getElementById('k_hp').value.trim(),
+            subtotal, diskon,
+            metode_bayar: document.getElementById('k_metode').value
+          }
+        });
+
+        if (res && res.status === 'success') {
+          Swal.fire({
+            title: 'Pembayaran Lunas!',
+            html: `No. Invoice: <b>${res.no_invoice}</b><br>Total Dibayar: <b>Rp ${Number(res.total).toLocaleString('id-ID')}</b>`,
+            icon: 'success',
+            confirmButtonText: 'Cetak Kuitansi'
+          }).then(() => {
+            cetakDokumen(`
+              <div style="font-family:sans-serif; max-width:400px; margin:auto; border:1px solid #ccc; padding:20px;">
+                <h2 style="margin:0; text-align:center;">KUITANSI PEMBAYARAN SIMKLINIK</h2>
+                <hr/>
+                <p>No. Invoice: <b>${res.no_invoice}</b></p>
+                <p>Pasien: ${nama}</p>
+                <p>Total Lunas: <b>Rp ${Number(res.total).toLocaleString('id-ID')}</b></p>
+                <p>Tanggal: ${new Date().toLocaleString('id-ID')}</p>
+                <hr/>
+                <p style="text-align:center; font-size:12px;">Terima kasih atas kunjungan Anda.</p>
+              </div>
+            `);
+          });
+          e.target.reset();
+        } else if (res) {
+          Swal.fire('Gagal', res.message, 'error');
+        }
+      });
+    }
   </script>
 </body>
 </html>
