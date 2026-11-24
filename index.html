@@ -284,7 +284,26 @@
         return false;
       }, true);
     })();
+	
+	let DYNAMIC_PERMISSIONS = null;
 
+    async function muatHakAksesServer() {
+      const res = await callBackend('getRolePermissions');
+      if (res && res.status === 'success' && res.permissions) {
+        DYNAMIC_PERMISSIONS = res.permissions;
+        // Terapkan izin dinamis ke APP_MENUS (SUPER_ADMIN selalu memiliki semua akses)
+        APP_MENUS.forEach(m => {
+          const rolesAllowed = ['SUPER_ADMIN'];
+          Object.keys(DYNAMIC_PERMISSIONS).forEach(roleKey => {
+            if (DYNAMIC_PERMISSIONS[roleKey].includes(m.id)) {
+              rolesAllowed.push(roleKey);
+            }
+          });
+          m.roles = rolesAllowed;
+        });
+      }
+    }
+	
     // =========================================================================
     // 2. VARIABEL GLOBAL & DAFTAR MENU RBAC
     // =========================================================================
@@ -434,7 +453,7 @@
     // =========================================================================
     // INISIALISASI TAMPILAN APLIKASI & SIDEBAR RBAC
     // =========================================================================
-    function initAppShell() {
+    async function initAppShell() {
       document.getElementById('loginView').classList.add('hidden');
       document.getElementById('appView').classList.remove('hidden');
 
@@ -446,6 +465,11 @@
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
       });
 
+      // Muat hak akses kustom per jabatan dari server sebelum merender sidebar
+      if (typeof muatHakAksesServer === 'function') {
+        await muatHakAksesServer();
+      }
+
       const allowedMenus = APP_MENUS.filter(m => m.roles.includes(CURRENT_USER.role));
       const menuHtml = allowedMenus.map(m => `
         <button onclick="navigate('${m.id}')" id="nav-${m.id}"
@@ -456,6 +480,13 @@
       `).join('');
 
       document.getElementById('sidebarMenuContainer').innerHTML = menuHtml;
+
+      // Terapkan identitas nama aplikasi & klinik
+      if (typeof muatIdentitasAplikasi === 'function') {
+        muatIdentitasAplikasi();
+      }
+
+      // Pertahankan halaman terakhir sebelum refresh
       const lastPage = sessionStorage.getItem('simklinik_active_page') || 'dashboard';
       navigate(lastPage);
     }
@@ -1043,7 +1074,7 @@
     }
     
 	// =========================================================================
-    // MODUL MASTER DATA KLINIK, MANAJEMEN AKUN & SCAN BARCODE WA
+    // MODUL MASTER DATA KLINIK, MANAJEMEN AKUN, RBAC & SCAN BARCODE WA
     // =========================================================================
     async function renderMasterData() {
       document.getElementById('mainContent').innerHTML = `
@@ -1063,7 +1094,8 @@
               <i class="fa-solid fa-qrcode"></i> Tampilkan Barcode Scan HP
             </button>
           </div>
-			<!-- Form Identitas Aplikasi & Profil Klinik -->
+
+          <!-- Form Identitas Aplikasi & Profil Klinik -->
           <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <h3 class="text-base font-bold text-blue-950 mb-1">Identitas Aplikasi & Profil Klinik</h3>
             <p class="text-xs text-slate-500 mb-4">Data ini otomatis ditampilkan pada halaman login, sidebar, kop surat medis, dan kuitansi pembayaran.</p>
@@ -1104,6 +1136,7 @@
               </div>
             </form>
           </div>
+
           <!-- Grid Manajemen Pengguna & Tenaga Kesehatan -->
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Tambah & Daftar Akun Pengguna (RBAC) -->
@@ -1177,6 +1210,36 @@
               </div>
             </div>
           </div>
+
+          <!-- Kartu Pengaturan Hak Akses Per Jabatan (RBAC Matrix) -->
+          <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex flex-wrap justify-between items-center gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h3 class="text-base font-bold text-blue-950">Pengaturan Hak Akses Menu Per Jabatan (RBAC)</h3>
+                <p class="text-xs text-slate-500">Pilih jabatan di bawah ini untuk mengatur menu apa saja yang dapat dibuka oleh staf.</p>
+              </div>
+              <select id="rbac_select_role" onchange="muatCheckboxRole()" class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-blue-950 bg-sky-50">
+                <option value="ADMIN">Admin Klinik</option>
+                <option value="DOKTER">Dokter</option>
+                <option value="PERAWAT">Perawat</option>
+                <option value="PENDAFTARAN">Petugas Pendaftaran</option>
+                <option value="FARMASI">Petugas Farmasi</option>
+                <option value="LAB">Petugas Laboratorium</option>
+                <option value="KASIR">Kasir</option>
+                <option value="MANAJEMEN">Manajemen / Pemilik</option>
+              </select>
+            </div>
+
+            <div id="rbac_checkbox_container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-xs">
+              <!-- Checkbox dirender otomatis -->
+            </div>
+
+            <div class="flex justify-end pt-2">
+              <button onclick="simpanPerubahanHakAkses()" class="px-5 py-2.5 rounded-xl bg-blue-900 hover:bg-blue-800 text-white text-xs font-semibold shadow-sm">
+                <i class="fa-solid fa-shield-halved mr-1.5"></i> Simpan Pengaturan Hak Akses
+              </button>
+            </div>
+          </div>
         </div>`;
 
       // Load data awal
@@ -1197,9 +1260,8 @@
             <td class="p-2">${n.sip}</td>
             <td class="p-2 font-mono text-[11px] text-sky-700">${n.ihs_practitioner || '-'}</td>
           </tr>`).join('') : '<tr><td colspan="4" class="p-3 text-center text-slate-400">Belum ada data nakes.</td></tr>';
-      }
-		
-		// Isi form profil klinik dengan data tersimpan
+
+        // Isi form profil klinik dengan data tersimpan
         if (res.klinik) {
           document.getElementById('kl_nama_app').value = res.klinik.nama_aplikasi || 'SIMKLINIK';
           document.getElementById('kl_nama_klinik').value = res.klinik.nama_klinik || '';
@@ -1209,15 +1271,24 @@
           document.getElementById('kl_org_id').value = res.klinik.org_id_satusehat || '';
           document.getElementById('kl_alamat').value = res.klinik.alamat || '';
         }
+      }
+
+      // Render checkbox hak akses untuk role terpilih
+      if (typeof muatCheckboxRole === 'function') {
+        await muatCheckboxRole();
+      }
 
       // Handler Simpan Identitas Klinik & Aplikasi
       document.getElementById('formProfilKlinik').addEventListener('submit', async (e) => {
         e.preventDefault();
         Swal.fire({ title: 'Menyimpan Profil...', didOpen: () => Swal.showLoading() });
+        const newApp = document.getElementById('kl_nama_app').value.trim();
+        const newClinic = document.getElementById('kl_nama_klinik').value.trim();
+
         const r = await callBackend('simpanProfilKlinik', {
           data: {
-            nama_aplikasi: document.getElementById('kl_nama_app').value.trim(),
-            nama_klinik: document.getElementById('kl_nama_klinik').value.trim(),
+            nama_aplikasi: newApp,
+            nama_klinik: newClinic,
             no_izin: document.getElementById('kl_no_izin').value.trim(),
             no_wa: document.getElementById('kl_no_wa').value.trim(),
             email: document.getElementById('kl_email').value.trim(),
@@ -1227,13 +1298,17 @@
           }
         });
         if (r && r.status === 'success') {
+          localStorage.setItem('simklinik_app_name', newApp);
+          localStorage.setItem('simklinik_clinic_name', newClinic);
+          if (typeof terapkanIdentitasKeUI === 'function') {
+            terapkanIdentitasKeUI(newApp, newClinic);
+          }
           Swal.fire('Tersimpan', r.message, 'success');
-          muatIdentitasAplikasi(); // Langsung perbarui tampilan judul aplikasi
         } else if (r) {
           Swal.fire('Gagal', r.message, 'error');
         }
       });
-		
+
       // Handler Simpan Akun Baru
       document.getElementById('formUserBaru').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -2132,6 +2207,42 @@
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+	
+	async function muatCheckboxRole() {
+      if (!DYNAMIC_PERMISSIONS) await muatHakAksesServer();
+      const selectedRole = document.getElementById('rbac_select_role').value;
+      const allowedList = (DYNAMIC_PERMISSIONS && DYNAMIC_PERMISSIONS[selectedRole]) || [];
+
+      const container = document.getElementById('rbac_checkbox_container');
+      container.innerHTML = APP_MENUS.map(m => {
+        const checked = allowedList.includes(m.id) ? 'checked' : '';
+        return `
+          <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 hover:bg-sky-50/50 cursor-pointer">
+            <input type="checkbox" class="rbac-chk w-4 h-4 accent-blue-900" value="${m.id}" ${checked} />
+            <div>
+              <div class="font-bold text-slate-800">${m.label}</div>
+              <div class="text-[10px] text-slate-400">${m.id}</div>
+            </div>
+          </label>`;
+      }).join('');
+    }
+
+    async function simpanPerubahanHakAkses() {
+      const selectedRole = document.getElementById('rbac_select_role').value;
+      const checkedMenus = Array.from(document.querySelectorAll('.rbac-chk:checked')).map(el => el.value);
+
+      Swal.fire({ title: 'Menyimpan Hak Akses...', didOpen: () => Swal.showLoading() });
+      const res = await callBackend('simpanRolePermissions', {
+        data: { role: selectedRole, menus: checkedMenus }
+      });
+
+      if (res && res.status === 'success') {
+        await muatHakAksesServer();
+        Swal.fire('Tersimpan', res.message, 'success');
+      } else if (res) {
+        Swal.fire('Gagal', res.message, 'error');
+      }
     }
   </script>
 </body>
