@@ -481,7 +481,7 @@
                 </select>
               </div>
               <div>
-                <label class="block text-xs font-semibold text-slate-600 mb-1">No. WhatsApp / HP (Notifikasi GOWA) *</label>
+                <label class="block text-xs font-semibold text-slate-600 mb-1">No. WhatsApp / HP (Notifikasi) *</label>
                 <input type="tel" id="p_no_hp" required class="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:ring-2 focus:ring-sky-500 focus:outline-none" placeholder="0812xxxxxxxx" />
               </div>
               <div>
@@ -512,7 +512,7 @@
           <!-- Pencarian Pasien Lama & Buat Antrean -->
           <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <h3 class="text-base font-bold text-blue-950">Pendaftaran Kunjungan / Antrean</h3>
-            <p class="text-xs text-slate-500">Daftarkan pasien ke poli tujuan dan kirim tiket nomor antrean via WhatsApp GOWA.</p>
+            <p class="text-xs text-slate-500">Daftarkan pasien ke poli tujuan dan kirim tiket nomor antrean via WhatsApp.</p>
 
             <form id="formBuatAntrean" class="space-y-3 text-sm">
               <div>
@@ -574,7 +574,7 @@
         }
       });
 
-      // Submit Antrean + Notifikasi WA GOWA
+      // Submit Antrean + Notifikasi WA
       document.getElementById('formBuatAntrean').addEventListener('submit', async (e) => {
         e.preventDefault();
         const [poli_id, kode_poli, nama_poli] = document.getElementById('a_poli').value.split('|');
@@ -592,7 +592,7 @@
         if (res && res.status === 'success') {
           Swal.fire({
             title: 'Antrean Berhasil Dibuat',
-            html: `Nomor Antrean: <h2 class="text-3xl font-bold text-blue-900 my-2">${res.no_antrean}</h2><p class="text-xs text-slate-500">Notifikasi WhatsApp telah dikirim ke pasien via GOWA.</p>`,
+            html: `Nomor Antrean: <h2 class="text-3xl font-bold text-blue-900 my-2">${res.no_antrean}</h2><p class="text-xs text-slate-500">Notifikasi WhatsApp telah dikirim ke pasien via Whatsapp.</p>`,
             icon: 'success',
             showCancelButton: true,
             confirmButtonText: 'Cetak Tiket Antrean',
@@ -1293,7 +1293,7 @@
     }
 
     // =========================================================================
-    // MODUL ANTREAN REAL-TIME & PANGGIL PASIEN VIA WA GOWA
+    // MODUL ANTREAN REAL-TIME & PANGGIL PASIEN VIA WA
     // =========================================================================
     async function renderAntrean() {
       document.getElementById('mainContent').innerHTML = `
